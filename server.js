@@ -31,6 +31,7 @@ const agentCommissionRoutes = require("./routes/agentCommissionRoutes");
 const subAgentCommissionRoutes = require("./routes/subAgentCommissionRoutes");
 const salesmanCommissionRoutes = require("./routes/salesmanCommissionRoutes");
 const shopCommissionRoutes = require("./routes/shopCommissionRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
 // ✅ Register Routes
 app.use("/api/auth", authRoutes);
@@ -49,6 +50,7 @@ app.use("/api/agentCommissions", agentCommissionRoutes);
 app.use("/api/subAgentCommissions", subAgentCommissionRoutes);
 app.use("/api/salesmanCommissions", salesmanCommissionRoutes);
 app.use("/api/shopCommissions", shopCommissionRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // ✅ Sync Database & Start Server
 const PORT = process.env.PORT || 5000;
