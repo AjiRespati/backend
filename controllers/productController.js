@@ -5,7 +5,7 @@ const path = require("path");
 exports.createProduct = async (req, res) => {
     try {
         const { name, description, updateBy } = req.body;
-        const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+        const imagePath = req.imagePath || null;
 
         console.log("📢 Received Data:", { name, image:imagePath, description, updateBy }); // Debug input data
 

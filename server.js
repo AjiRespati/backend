@@ -33,6 +33,9 @@ const salesmanCommissionRoutes = require("./routes/salesmanCommissionRoutes");
 const shopCommissionRoutes = require("./routes/shopCommissionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 
+// ✅ Serve Static Files (Fix the Image Error)
+app.use('/api/uploads', express.static('uploads'));
+
 // ✅ Register Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
