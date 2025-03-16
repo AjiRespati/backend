@@ -13,6 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     Metric.associate = (models) => {
         Metric.belongsTo(models.Product, { foreignKey: "productId" });
         Metric.hasMany(models.Price, { foreignKey: "metricId", onDelete: "CASCADE" });
+        Metric.hasMany(models.Stock, { foreignKey: "metricId", onDelete: "CASCADE" }); // ✅ Add this line
     };
 
     return Metric;

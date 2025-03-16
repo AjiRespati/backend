@@ -1,32 +1,92 @@
-const { Product } = require("../models");
+const db = require("../models");
+const sequelize = db.sequelize;
+const { Product, Metric, Price, Percentage, Stock } = require("../models");
 const logger = require("../config/logger");
 const path = require("path");
 
 exports.createProduct = async (req, res) => {
+    const { name, description, price, metricType, updateBy } = req.body;
+
     try {
-        const { name, description, updateBy } = req.body;
-        const imagePath = req.imagePath || null;
+        // ✅ Fetch Supplier Percentage from Percentages Table
+        const supplierPercentage = await Percentage.findOne({ where: { key: "supplier" } });
+        if (!supplierPercentage) {
+            return res.status(500).json({ error: "Supplier percentage not set" });
+        }
 
-        console.log("📢 Received Data:", { name, image:imagePath, description, updateBy }); // Debug input data
+        // ✅ Calculate netPrice
+        const netPrice = price * (100 / supplierPercentage.value);
 
-        const product = await Product.create({ name, image: imagePath, description, updateBy });
+        // ✅ Create Product
+        const product = await Product.create({
+            name,
+            image: req.imagePath || null,
+            description,
+            updateBy
+        });
 
-        logger.info(`Product created: ${product.name}`);
+        // ✅ Create Metric
+        const metric = await Metric.create({
+            productId: product.id,
+            metricType,
+            updateBy
+        });
+
+        // ✅ Create Price with netPrice
+        await Price.create({
+            metricId: metric.id,
+            price,
+            netPrice,
+            updateBy
+        });
+
         res.status(201).json(product);
     } catch (error) {
-        // console.error("❌ Product creation error:", error); // Full error log
-        logger.error(`Product creation error: ${error.stack}`);
-        res.status(500).json({ error: "Product creation failed" });
+        console.error("❌ Product Creation Error:", error);
+        res.status(500).json({ error: "Failed to create product" });
     }
 };
 
 exports.getAllProducts = async (req, res) => {
     try {
-        const products = await Product.findAll();
-        res.json(products);
+        const query = `
+            SELECT 
+                p.id AS "productId",
+                p.name AS "productName",
+                p.image,
+                p.description,
+                m.id AS "metricId",
+                m."metricType",
+                COALESCE(SUM(s.amount), 0) AS "totalStock",
+                pr.price,
+                pr."netPrice"
+            FROM "Products" p
+            LEFT JOIN "Metrics" m ON p.id = m."productId"
+            LEFT JOIN "Stocks" s ON m.id = s."metricId"
+            LEFT JOIN (
+                SELECT 
+                    "metricId",
+                    price,
+                    "netPrice",
+                    "createdAt"
+                FROM "Prices"
+                WHERE "createdAt" IN (
+                    SELECT MAX("createdAt") 
+                    FROM "Prices" 
+                    GROUP BY "metricId"
+                )
+            ) pr ON pr."metricId" = m.id
+            GROUP BY 
+                p.id, m.id, pr.price, pr."netPrice"
+            ORDER BY p."createdAt" DESC;
+        `;
+
+        const [results] = await sequelize.query(query);
+
+        res.json(results);
     } catch (error) {
-        logger.error(`Fetch products error: ${error.stack}`);
-        res.status(500).json({ error: "Fetching products failed" });
+        console.error("❌ Raw SQL Error:", error);
+        res.status(500).json({ error: "Failed to fetch product" });
     }
 };
 
