@@ -45,7 +45,7 @@ exports.createStock = async (req, res) => {
             totalDistributorShare = 0;
         }
 
-        const totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
+        const totalShopShare =stockEvent === 'stock_in' ? null : totalNetPrice * (percentageMap["shop"] / 100);
 
         // ✅ Create Stock Entry
         const stock = await Stock.create({

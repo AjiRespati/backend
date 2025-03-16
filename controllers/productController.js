@@ -111,8 +111,6 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
     const { productId } = req.params;
-    console.log("SATUUUUUUUUUUUUUU....!!!");
-
     try {
         const query = `
             SELECT 
