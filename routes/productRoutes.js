@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.post("/", authMiddleware, upload.single("image"), imageCompressor, createProduct);
 router.get("/", authMiddleware, getAllProducts);
-router.get("/:id", authMiddleware, getProductById);
+router.get("/:productId", authMiddleware, getProductById);
 router.put("/:id", authMiddleware, upload.single("image"), updateProduct);
 router.delete("/:id", authMiddleware, deleteProduct);
 

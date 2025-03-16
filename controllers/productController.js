@@ -110,14 +110,70 @@ exports.getAllProducts = async (req, res) => {
 };
 
 exports.getProductById = async (req, res) => {
-    try {
-        const product = await Product.findByPk(req.params.id);
-        if (!product) return res.status(404).json({ error: "Product not found" });
+    const { productId } = req.params;
+    console.log("SATUUUUUUUUUUUUUU....!!!");
 
-        res.json(product);
+    try {
+        const query = `
+            SELECT 
+                p.id AS "productId",
+                p.name AS "productName",
+                p.image,
+                p.description,
+                m.id AS "metricId",
+                m."metricType",
+                (
+                    SELECT s."updateAmount"
+                    FROM "Stocks" s
+                    WHERE s."metricId" = m.id
+                    ORDER BY s."createdAt" DESC
+                    LIMIT 1
+                ) AS "totalStock",
+                pr.price,
+                pr."netPrice",
+                (
+                    SELECT s."createdAt"
+                    FROM "Stocks" s
+                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_in'
+                    ORDER BY s."createdAt" DESC
+                    LIMIT 1
+                ) AS "last_stock_in",
+                (
+                    SELECT s."createdAt"
+                    FROM "Stocks" s
+                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_out'
+                    ORDER BY s."createdAt" DESC
+                    LIMIT 1
+                ) AS "last_stock_out"
+            FROM "Products" p
+            LEFT JOIN "Metrics" m ON p.id = m."productId"
+            LEFT JOIN (
+                SELECT 
+                    "metricId",
+                    price,
+                    "netPrice",
+                    "createdAt"
+                FROM "Prices"
+                WHERE "createdAt" IN (
+                    SELECT MAX("createdAt") 
+                    FROM "Prices" 
+                    GROUP BY "metricId"
+                )
+            ) pr ON pr."metricId" = m.id
+            WHERE p.id = :productId
+            GROUP BY 
+                p.id, m.id, pr.price, pr."netPrice"
+            ORDER BY p."createdAt" DESC;
+        `;
+
+        const [results] = await sequelize.query(query, {
+            replacements: { productId }
+        });
+
+        res.json(results);
     } catch (error) {
-        logger.error(`Fetch product error: ${error.stack}`);
-        res.status(500).json({ error: "Fetching product failed" });
+        console.error("❌ Raw SQL Error:", error);
+        res.status(500).json({ error: "Failed to fetch product" });
     }
 };
 
