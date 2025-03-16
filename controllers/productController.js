@@ -1,6 +1,6 @@
 const db = require("../models");
 const sequelize = db.sequelize;
-const { Product, Metric, Price, Percentage, Stock } = require("../models");
+const { Product, Metric, Price, Percentage } = require("../models");
 const logger = require("../config/logger");
 const path = require("path");
 
