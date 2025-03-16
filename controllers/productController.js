@@ -57,12 +57,31 @@ exports.getAllProducts = async (req, res) => {
                 p.description,
                 m.id AS "metricId",
                 m."metricType",
-                COALESCE(SUM(s.amount), 0) AS "totalStock",
+                (
+                    SELECT s."updateAmount"
+                    FROM "Stocks" s
+                    WHERE s."metricId" = m.id
+                    ORDER BY s."createdAt" DESC
+                    LIMIT 1
+                ) AS "totalStock",
                 pr.price,
-                pr."netPrice"
+                pr."netPrice",
+                (
+                    SELECT s."createdAt"
+                    FROM "Stocks" s
+                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_in'
+                    ORDER BY s."createdAt" DESC
+                    LIMIT 1
+                ) AS "last_stock_in",
+                (
+                    SELECT s."createdAt"
+                    FROM "Stocks" s
+                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_out'
+                    ORDER BY s."createdAt" DESC
+                    LIMIT 1
+                ) AS "last_stock_out"
             FROM "Products" p
             LEFT JOIN "Metrics" m ON p.id = m."productId"
-            LEFT JOIN "Stocks" s ON m.id = s."metricId"
             LEFT JOIN (
                 SELECT 
                     "metricId",
