@@ -4,7 +4,14 @@ const logger = require("../config/logger");
 exports.createAgent = async (req, res) => {
     try {
         const { name, image, address, phone, email, updateBy } = req.body;
-        const agent = await Agent.create({ name, image, address, phone, email, updateBy });
+        const agent = await Agent.create({
+            name,
+            image,
+            address,
+            phone,
+            email,
+            updateBy: req.user.username
+        });
 
         logger.info(`Agent created: ${agent.name}`);
         res.status(201).json(agent);
@@ -32,7 +39,7 @@ exports.updateAgent = async (req, res) => {
         const agent = await Agent.findByPk(id);
         if (!agent) return res.status(404).json({ error: "Agent not found" });
 
-        Object.assign(agent, { name, image, address, phone, email, updateBy });
+        Object.assign(agent, { name, image, address, phone, email, updateBy: req.user.username });
         await agent.save();
 
         logger.info(`Agent updated: ${agent.name}`);

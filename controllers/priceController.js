@@ -4,7 +4,7 @@ const logger = require("../config/logger");
 exports.createPrice = async (req, res) => {
     try {
         const { metricId, price, netPrice, updateBy } = req.body;
-        const newPrice = await Price.create({ metricId, price, netPrice, updateBy });
+        const newPrice = await Price.create({ metricId, price, netPrice, updateBy: req.user.username });
 
         logger.info(`Price added for metric: ${metricId}`);
         res.status(201).json(newPrice);
@@ -36,7 +36,7 @@ exports.updatePrice = async (req, res) => {
 
         existingPrice.price = price || existingPrice.price;
         existingPrice.netPrice = netPrice || existingPrice.netPrice;
-        existingPrice.updateBy = updateBy || existingPrice.updateBy;
+        existingPrice.updateBy = req.user.username;
 
         await existingPrice.save();
         logger.info(`Price updated: ${id}`);

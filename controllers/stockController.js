@@ -51,7 +51,7 @@ exports.createStock = async (req, res) => {
         const stock = await Stock.create({
             metricId, stockEvent, initialAmount, amount, updateAmount, totalPrice, totalNetPrice,
             totalDistributorShare, totalSalesShare, totalSubAgentShare, totalAgentShare, totalShopShare,
-            createdBy, salesId, subAgentId, agentId, status, description
+            createdBy: req.user.username, salesId, subAgentId, agentId, status, description
         });
 
         logger.info(`Stock ${stockEvent} created for metric ${metricId}`);

@@ -4,7 +4,7 @@ const logger = require("../config/logger");
 exports.createShop = async (req, res) => {
     try {
         const { name, image, address, coordinates, phone, email, updateBy } = req.body;
-        const shop = await Shop.create({ name, image, address, coordinates, phone, email, updateBy });
+        const shop = await Shop.create({ name, image, address, coordinates, phone, email, updateBy: req.user.username });
 
         logger.info(`Shop created: ${shop.name}`);
         res.status(201).json(shop);
@@ -32,7 +32,7 @@ exports.updateShop = async (req, res) => {
         const shop = await Shop.findByPk(id);
         if (!shop) return res.status(404).json({ error: "Shop not found" });
 
-        Object.assign(shop, { name, image, address, coordinates, phone, email, updateBy });
+        Object.assign(shop, { name, image, address, coordinates, phone, email, updateBy: req.user.username });
         await shop.save();
 
         logger.info(`Shop updated: ${shop.name}`);

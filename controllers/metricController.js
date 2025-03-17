@@ -5,7 +5,7 @@ exports.createMetric = async (req, res) => {
     try {
         const { productId, metricType, updateBy } = req.body;
         console.log(req.body);
-        const metric = await Metric.create({ productId, metricType, updateBy });
+        const metric = await Metric.create({ productId, metricType, updateBy: req.user.username });
 
         logger.info(`Metric created for product: ${productId}`);
         res.status(201).json(metric);

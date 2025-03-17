@@ -17,7 +17,7 @@ exports.createPercentage = async (req, res) => {
             return res.status(400).json({ error: "Percentage key already exists. Use update instead." });
         }
 
-        percentage = await Percentage.create({ key, value, updateBy });
+        percentage = await Percentage.create({ key, value, updateBy: req.user.username });
 
         logger.info(`Percentage created: ${key} = ${value}`);
         res.status(201).json(percentage);
@@ -48,7 +48,7 @@ exports.updatePercentage = async (req, res) => {
         if (!percentage) return res.status(404).json({ error: "Percentage key not found" });
 
         percentage.value = value;
-        percentage.updateBy = updateBy;
+        percentage.updateBy = req.user.username;
         await percentage.save();
 
         logger.info(`Percentage updated: ${percentage.key} = ${value}`);

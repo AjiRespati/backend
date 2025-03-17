@@ -22,14 +22,14 @@ exports.createProduct = async (req, res) => {
             name,
             image: req.imagePath || null,
             description,
-            updateBy
+            updateBy: req.user.username
         });
 
         // ✅ Create Metric
         const metric = await Metric.create({
             productId: product.id,
             metricType,
-            updateBy
+            updateBy: req.user.username
         });
 
         // ✅ Create Price with netPrice
@@ -37,7 +37,7 @@ exports.createProduct = async (req, res) => {
             metricId: metric.id,
             price,
             netPrice,
-            updateBy
+            updateBy: req.user.username
         });
 
         res.status(201).json(product);
@@ -187,7 +187,7 @@ exports.updateProduct = async (req, res) => {
         product.name = name || product.name;
         product.image = imagePath;
         product.description = description || product.description;
-        product.updateBy = updateBy || product.updateBy;
+        product.updateBy = req.user.username;
 
         await product.save();
         logger.info(`Product updated: ${product.name}`);

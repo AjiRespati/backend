@@ -26,7 +26,7 @@ exports.settleSubAgentCommission = async (req, res) => {
             percentage: subAgentPercentage.value,
             totalNetPrice,
             amount: commissionAmount,
-            createdBy
+            createdBy: req.user.username
         });
 
         logger.info(`✅ SubAgent Commission Settled for Stock: ${stockId}`);

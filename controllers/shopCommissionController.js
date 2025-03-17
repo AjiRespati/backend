@@ -24,7 +24,7 @@ exports.settleShopCommission = async (req, res) => {
             percentage: shopPercentage.value,
             totalNetPrice,
             amount: commissionAmount,
-            createdBy
+            createdBy: req.user.username
         });
 
         logger.info(`✅ Shop Commission Settled for Stock: ${stockId}`);

@@ -4,7 +4,7 @@ const logger = require("../config/logger");
 exports.createSubAgent = async (req, res) => {
     try {
         const { name, image, address, phone, email, updateBy } = req.body;
-        const subAgent = await SubAgent.create({ name, image, address, phone, email, updateBy });
+        const subAgent = await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username });
 
         logger.info(`SubAgent created: ${subAgent.name}`);
         res.status(201).json(subAgent);
@@ -32,7 +32,7 @@ exports.updateSubagent = async (req, res) => {
         const subAgent = await SubAgent.findByPk(id);
         if (!subAgent) return res.status(404).json({ error: "SubAgent not found" });
 
-        Object.assign(subAgent, { name, image, address, phone, email, updateBy });
+        Object.assign(subAgent, { name, image, address, phone, email, updateBy: req.user.username });
         await subAgent.save();
 
         logger.info(`SubAgent updated: ${subAgent.name}`);
