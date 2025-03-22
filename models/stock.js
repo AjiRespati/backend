@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         totalSalesShare: { type: DataTypes.FLOAT, allowNull: true },
         totalSubAgentShare: { type: DataTypes.FLOAT, allowNull: true },
         totalAgentShare: { type: DataTypes.FLOAT, allowNull: true },
-        totalShopShare: { type: DataTypes.FLOAT, allowNull: false },
+        totalShopShare: { type: DataTypes.FLOAT, allowNull: true },
         createdBy: { type: DataTypes.STRING, allowNull: false },
         canceledBy: { type: DataTypes.STRING, allowNull: true },
         removedBy: { type: DataTypes.STRING, allowNull: true },
