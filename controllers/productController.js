@@ -102,7 +102,34 @@ exports.getAllProducts = async (req, res) => {
 
         const [results] = await sequelize.query(query);
 
-        res.json(results);
+        console.log("HASILNYA: ", results);
+
+        let realResult = [];
+        let productMap = new Map();
+        
+        results.forEach((item) => {
+            console.log(item.productId);
+          if (productMap.has(item.productId)) {
+            let existingItem = productMap.get(item.productId);
+            existingItem.totalStock += item.totalStock;
+          } else {
+            productMap.set(item.productId, { ...item });
+          }
+        });
+        
+        productMap.forEach((item) => {
+          realResult.push({
+            productId: item.productId,
+            productName: item.productName,
+            image: item.image,
+            description: item.description,
+            totalStock: item.totalStock,
+            last_stock_in: item.last_stock_in,
+            last_stock_out: item.last_stock_out,
+          });
+        });
+
+        res.json(realResult);
     } catch (error) {
         console.error("❌ Raw SQL Error:", error);
         res.status(500).json({ error: "Failed to fetch product" });
