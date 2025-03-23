@@ -1,9 +1,9 @@
-const { Stock, Metric, Price, Percentage } = require("../models");
+const { Stock, Metric, Price, Percentage, Shop } = require("../models");
 const logger = require("../config/logger");
 
 exports.createStock = async (req, res) => {
     try {
-        const { metricId, stockEvent, amount, createdBy, salesId, subAgentId, agentId, status, description } = req.body;
+        const { metricId, stockEvent, amount, createdBy, salesId, subAgentId, agentId, shopId, status, description } = req.body;
 
         let initialAmount = 0;
         const lastStock = await Stock.findOne({ where: { metricId }, order: [["createdAt", "DESC"]] });
@@ -31,6 +31,7 @@ exports.createStock = async (req, res) => {
         let totalSalesShare = null;
         let totalSubAgentShare = null;
         let totalAgentShare = null;
+        let totalShopShare = null;
 
         if (salesId) {
             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["salesman"]) / 100;
@@ -39,20 +40,60 @@ exports.createStock = async (req, res) => {
             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["subAgent"]) / 100;
             totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] / 100);
         } else if (agentId) {
-            totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["agent"]) / 100;
+            /// kalau agent, tidak perlu bagi ke shop
+            totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["agent"]) / 100;
+            // totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["agent"]) / 100;
+
             totalAgentShare = totalNetPrice * (percentageMap["agent"] / 100);
         } else {
             totalDistributorShare = 0;
         }
 
-        const totalShopShare =stockEvent === 'stock_in' ? null : totalNetPrice * (percentageMap["shop"] / 100);
+        if (stockEvent === 'stock_out' && !agentId) {
+            totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
+        }
 
         // ✅ Create Stock Entry
         const stock = await Stock.create({
             metricId, stockEvent, initialAmount, amount, updateAmount, totalPrice, totalNetPrice,
             totalDistributorShare, totalSalesShare, totalSubAgentShare, totalAgentShare, totalShopShare,
-            createdBy: req.user.username, salesId, subAgentId, agentId, status, description
+            createdBy: req.user.username, salesId, subAgentId, agentId, shopId, status, description
         });
+
+        // ✅ If stock is sold to a Shop, update Salesman/SubAgent stock and create a new stock entry for the Shop
+        if (stockEvent === 'stock_out' && shopId) {
+            const lastSellerStock = await Stock.findOne({
+                where: { metricId, salesId, subAgentId },
+                order: [["createdAt", "DESC"]]
+            });
+
+            if (lastSellerStock) {
+                await lastSellerStock.update({ updateAmount: lastSellerStock.updateAmount - amount });
+            }
+
+            await Stock.create({
+                metricId,
+                stockEvent: 'stock_out',
+                initialAmount: 0,
+                amount,
+                updateAmount: amount,
+                totalPrice,
+                totalNetPrice,
+                totalDistributorShare,
+                totalSalesShare,
+                totalSubAgentShare,
+                totalAgentShare,
+                totalShopShare,
+                createdBy: req.user.username,
+                salesId,
+                subAgentId,
+                shopId,
+                status: "created",
+                description: `Stock received from ${salesId ? "Salesman" : "SubAgent"}`
+            });
+
+            logger.info(`Stock moved to Shop ${shopId}: ${amount} units`);
+        }
 
         logger.info(`Stock ${stockEvent} created for metric ${metricId}`);
         res.status(201).json(stock);
@@ -61,6 +102,7 @@ exports.createStock = async (req, res) => {
         res.status(500).json({ error: "Stock creation failed" });
     }
 };
+
 
 exports.stockListByProduct = async (req, res) => {
     try {
