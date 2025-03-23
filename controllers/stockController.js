@@ -1,3 +1,5 @@
+const db = require("../models");
+const sequelize = db.sequelize;
 const { Stock, Metric, Price, Percentage, Shop } = require("../models");
 const logger = require("../config/logger");
 
@@ -157,3 +159,90 @@ exports.stockListByAgent = async (req, res) => {
         res.status(500).json({ error: "Failed to retrieve stock records" });
     }
 };
+
+exports.getStockHistory = async (req, res) => {
+    const { metricId, fromDate, toDate } = req.query;
+
+    try {
+        const query = `
+            SELECT 
+                s.id AS "stockId",
+                p."name" AS "productName",
+                m."metricType" AS "measurement", 
+                s."createdAt",
+                s."stockEvent",
+                s."initialAmount",
+                s."amount",
+                s."updateAmount",
+                s."totalPrice",
+                s."totalNetPrice",
+                s."createdBy",
+                COALESCE(sa.name, ag.name, sm.name, sh.name, 'N/A') AS "relatedEntity",
+                CASE 
+                    WHEN s."salesId" IS NOT NULL THEN 'Salesman'
+                    WHEN s."subAgentId" IS NOT NULL THEN 'SubAgent'
+                    WHEN s."agentId" IS NOT NULL THEN 'Agent'
+                    WHEN s."shopId" IS NOT NULL THEN 'Shop'
+                    ELSE 'Unknown'
+                END AS "entityType"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Salesmans" sm ON s."salesId" = sm.id
+            LEFT JOIN "SubAgents" sa ON s."subAgentId" = sa.id
+            LEFT JOIN "Agents" ag ON s."agentId" = ag.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            WHERE 
+                s."metricId" = :metricId
+                AND (:fromDate IS NULL OR s."createdAt" >= :fromDate)
+                AND (:toDate IS NULL OR s."createdAt" <= :toDate)
+            ORDER BY s."createdAt" DESC;
+        `;
+
+        const [results] = await sequelize.query(query, {
+            replacements: { metricId, fromDate, toDate }
+        });
+
+        res.json(results);
+    } catch (error) {
+        console.error("❌ Stock History Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock history" });
+    }
+};
+
+
+exports.getStockTable = async (req, res) => {
+    const { fromDate, toDate } = req.query;
+
+    try {
+        const query = `
+            SELECT 
+                p.id AS "productId",
+                p.name AS "productName",
+                p.image,
+                m.id AS "metricId",
+                m."metricType" AS "metricName",
+                SUM(CASE WHEN s."stockEvent" = 'stock_in' THEN s.amount ELSE 0 END) AS "totalStockIn",
+                SUM(CASE WHEN s."stockEvent" = 'stock_out' THEN s.amount ELSE 0 END) AS "totalStockOut",
+                MAX(s."createdAt") AS "lastStockUpdate"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            WHERE 
+                (:fromDate IS NULL OR s."createdAt" >= :fromDate)
+                AND (:toDate IS NULL OR s."createdAt" <= :toDate)
+            GROUP BY p.id, m.id
+            ORDER BY p."name" ASC, "lastStockUpdate" DESC;
+        `;
+
+        const [results] = await sequelize.query(query, {
+            replacements: { fromDate, toDate }
+        });
+
+        res.json(results);
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
