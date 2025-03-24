@@ -219,19 +219,32 @@ exports.getStockTable = async (req, res) => {
             SELECT 
                 p.id AS "productId",
                 p.name AS "productName",
-                p.image,
+                p.image AS "image",
                 m.id AS "metricId",
                 m."metricType" AS "metricName",
                 SUM(CASE WHEN s."stockEvent" = 'stock_in' THEN s.amount ELSE 0 END) AS "totalStockIn",
                 SUM(CASE WHEN s."stockEvent" = 'stock_out' THEN s.amount ELSE 0 END) AS "totalStockOut",
-                MAX(s."createdAt") AS "lastStockUpdate"
+                (
+                    SELECT s2."createdAt" AT TIME ZONE 'Asia/Bangkok' AT TIME ZONE 'UTC'
+                    FROM "Stocks" s2
+                    WHERE s2."metricId" = m.id
+                    ORDER BY s2."createdAt" DESC
+                    LIMIT 1
+                ) AS "lastStockUpdate",
+                (
+                    SELECT s3."updateAmount"
+                    FROM "Stocks" s3
+                    WHERE s3."metricId" = m.id
+                    ORDER BY s3."createdAt" DESC
+                    LIMIT 1
+                ) AS "latestUpdateAmount"
             FROM "Stocks" s
             LEFT JOIN "Metrics" m ON s."metricId" = m.id
             LEFT JOIN "Products" p ON m."productId" = p.id
             WHERE 
                 (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
-            GROUP BY p.id, m.id
+            GROUP BY p.id, m.id, p.image
             ORDER BY p."name" ASC, "lastStockUpdate" DESC;
         `;
 
