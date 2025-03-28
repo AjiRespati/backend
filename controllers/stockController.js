@@ -34,26 +34,6 @@ exports.createStock = async (req, res) => {
         let totalAgentShare = null;
         let totalShopShare = null;
 
-        // if (salesId) {
-        //     totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["salesman"]) / 100;
-        //     totalSalesShare = totalNetPrice * (percentageMap["salesman"] / 100);
-        // } else if (subAgentId) {
-        //     totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["subAgent"]) / 100;
-        //     totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] / 100);
-        // } else if (agentId) {
-        //     /// kalau agent, tidak perlu bagi ke shop
-        //     totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["agent"]) / 100;
-        //     // totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["agent"]) / 100;
-
-        //     totalAgentShare = totalNetPrice * (percentageMap["agent"] / 100);
-        // } else {
-        //     totalDistributorShare = 0;
-        // }
-
-        // if (stockEvent === 'stock_out' && !agentId) {
-        //     totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
-        // }
-
         // ✅ Create Stock Entry
         const stock = await Stock.create({
             metricId, 
@@ -141,7 +121,7 @@ exports.stockListByAgent = async (req, res) => {
 };
 
 exports.getStockHistory = async (req, res) => {
-    const { metricId, fromDate, toDate } = req.query;
+    const { metricId, fromDate, toDate, status } = req.query;
 
     try {
         const query = `
@@ -156,6 +136,7 @@ exports.getStockHistory = async (req, res) => {
                 s."updateAmount",
                 s."totalPrice",
                 s."totalNetPrice",
+                s."status",
                 s."createdBy",
                 COALESCE(sa.name, ag.name, sm.name, sh.name, 'N/A') AS "relatedEntity",
                 CASE 
@@ -176,11 +157,12 @@ exports.getStockHistory = async (req, res) => {
                 s."metricId" = :metricId
                 AND (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
+                AND (s."status" = :status)
             ORDER BY s."createdAt" DESC;
         `;
 
         const [results] = await sequelize.query(query, {
-            replacements: { metricId, fromDate, toDate }
+            replacements: { metricId, fromDate, toDate, status }
         });
 
         res.json(results);
@@ -192,7 +174,7 @@ exports.getStockHistory = async (req, res) => {
 
 
 exports.getStockTable = async (req, res) => {
-    const { fromDate, toDate } = req.query;
+    const { fromDate, toDate, status } = req.query;
 
     try {
         const query = `
@@ -214,7 +196,7 @@ exports.getStockTable = async (req, res) => {
                 (
                     SELECT s3."updateAmount"
                     FROM "Stocks" s3
-                    WHERE s3."metricId" = m.id
+                    WHERE s3."metricId" = m.id AND s3."status" = 'settled'
                     ORDER BY s3."createdAt" DESC
                     LIMIT 1
                 ) AS "latestUpdateAmount"
@@ -224,12 +206,13 @@ exports.getStockTable = async (req, res) => {
             WHERE 
                 (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
+                AND (s."status" = :status)
             GROUP BY p.id, m.id, p.image
             ORDER BY p."name" ASC, "lastStockUpdate" DESC;
         `;
 
         const [results] = await sequelize.query(query, {
-            replacements: { fromDate, toDate }
+            replacements: { fromDate, toDate, status }
         });
 
         res.json(results);
