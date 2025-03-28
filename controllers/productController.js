@@ -60,7 +60,7 @@ exports.getAllProducts = async (req, res) => {
                 (
                     SELECT s."updateAmount"
                     FROM "Stocks" s
-                    WHERE s."metricId" = m.id
+                    WHERE s."metricId" = m.id AND s."status" = 'settled'
                     ORDER BY s."createdAt" DESC
                     LIMIT 1
                 ) AS "totalStock",
@@ -76,7 +76,7 @@ exports.getAllProducts = async (req, res) => {
                 (
                     SELECT s."createdAt"
                     FROM "Stocks" s
-                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_out'
+                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_out' AND s."status" = 'settled'
                     ORDER BY s."createdAt" DESC
                     LIMIT 1
                 ) AS "last_stock_out"
@@ -150,7 +150,7 @@ exports.getProductById = async (req, res) => {
                 (
                     SELECT s."updateAmount"
                     FROM "Stocks" s
-                    WHERE s."metricId" = m.id
+                    WHERE s."metricId" = m.id AND s."status" = 'settled'
                     ORDER BY s."createdAt" DESC
                     LIMIT 1
                 ) AS "totalStock",
@@ -166,7 +166,7 @@ exports.getProductById = async (req, res) => {
                 (
                     SELECT s."createdAt"
                     FROM "Stocks" s
-                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_out'
+                    WHERE s."metricId" = m.id AND s."stockEvent" = 'stock_out' AND s."status" = 'settled'
                     ORDER BY s."createdAt" DESC
                     LIMIT 1
                 ) AS "last_stock_out"
