@@ -225,7 +225,7 @@ exports.getStockTable = async (req, res) => {
                 SUM(CASE WHEN s."stockEvent" = 'stock_in' THEN s.amount ELSE 0 END) AS "totalStockIn",
                 SUM(CASE WHEN s."stockEvent" = 'stock_out' THEN s.amount ELSE 0 END) AS "totalStockOut",
                 (
-                    SELECT s2."createdAt" AT TIME ZONE 'Asia/Bangkok' AT TIME ZONE 'UTC'
+                    SELECT s2."createdAt"
                     FROM "Stocks" s2
                     WHERE s2."metricId" = m.id
                     ORDER BY s2."createdAt" DESC
