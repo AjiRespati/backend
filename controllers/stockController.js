@@ -1,6 +1,7 @@
 const db = require("../models");
 const sequelize = db.sequelize;
-const { Stock, Metric, Price, Percentage, Shop } = require("../models");
+const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
+    AgentCommission } = require("../models");
 const logger = require("../config/logger");
 
 exports.createStock = async (req, res) => {
@@ -36,24 +37,24 @@ exports.createStock = async (req, res) => {
 
         // ✅ Create Stock Entry
         const stock = await Stock.create({
-            metricId, 
-            stockEvent, 
-            initialAmount, 
-            amount, 
-            updateAmount, 
+            metricId,
+            stockEvent,
+            initialAmount,
+            amount,
+            updateAmount,
             totalPrice,
-            totalNetPrice, 
-            totalDistributorShare, 
-            totalSalesShare, 
-            totalSubAgentShare, 
+            totalNetPrice,
+            totalDistributorShare,
+            totalSalesShare,
+            totalSubAgentShare,
             totalAgentShare,
-            totalShopShare, 
-            createdBy: req.user.username, 
-            salesId, 
-            subAgentId, 
-            agentId, 
-            shopId, 
-            status: stockEvent === 'stock_in' ? "settled": "created",
+            totalShopShare,
+            createdBy: req.user.username,
+            salesId,
+            subAgentId,
+            agentId,
+            shopId,
+            status: stockEvent === 'stock_in' ? "settled" : "created",
             description
         });
 
@@ -84,6 +85,7 @@ exports.stockListByProduct = async (req, res) => {
     }
 };
 
+
 exports.stockListBySales = async (req, res) => {
     try {
         const { salesId } = req.params;
@@ -95,6 +97,7 @@ exports.stockListBySales = async (req, res) => {
         res.status(500).json({ error: "Failed to retrieve stock records" });
     }
 };
+
 
 exports.stockListBySubAgent = async (req, res) => {
     try {
@@ -108,6 +111,7 @@ exports.stockListBySubAgent = async (req, res) => {
     }
 };
 
+
 exports.stockListByAgent = async (req, res) => {
     try {
         const { agentId } = req.params;
@@ -119,6 +123,7 @@ exports.stockListByAgent = async (req, res) => {
         res.status(500).json({ error: "Failed to retrieve stock records" });
     }
 };
+
 
 exports.getStockHistory = async (req, res) => {
     const { metricId, fromDate, toDate, status } = req.query;
@@ -222,12 +227,25 @@ exports.getStockTable = async (req, res) => {
     }
 };
 
-exports.createStockCopyBackup = async (req, res) => {
-    try {
-        const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, status, description } = req.body;
 
+exports.settlingStock = async (req, res) => {
+    try {
+        const { id, metricId } = req.body;
+
+        // Find stock entry with 'created' status
+        let stock = await Stock.findOne({ where: { id, status: "created" } });
+
+        if (!stock) {
+            return res.status(404).json({ message: "Stock entry not found or already settled" });
+        }
+
+        let amount = stock.amount;
         let initialAmount = 0;
-        const lastStock = await Stock.findOne({ where: { metricId }, order: [["createdAt", "DESC"]] });
+        const lastStock = await Stock.findOne({
+            where: { metricId, status: "settled" },
+            order: [["createdAt", "DESC"]]
+        });
+
         if (lastStock) {
             initialAmount = lastStock.updateAmount ? lastStock.updateAmount : 0;
         }
@@ -254,13 +272,13 @@ exports.createStockCopyBackup = async (req, res) => {
         let totalAgentShare = null;
         let totalShopShare = null;
 
-        if (salesId) {
+        if (stock.salesId) {
             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["salesman"]) / 100;
             totalSalesShare = totalNetPrice * (percentageMap["salesman"] / 100);
-        } else if (subAgentId) {
+        } else if (stock.subAgentId) {
             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["subAgent"]) / 100;
             totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] / 100);
-        } else if (agentId) {
+        } else if (stock.agentId) {
             /// kalau agent, tidak perlu bagi ke shop
             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["agent"]) / 100;
             // totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["agent"]) / 100;
@@ -274,53 +292,166 @@ exports.createStockCopyBackup = async (req, res) => {
             totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
         }
 
-        // ✅ Create Stock Entry
-        const stock = await Stock.create({
-            metricId, stockEvent, initialAmount, amount, updateAmount, totalPrice, totalNetPrice,
-            totalDistributorShare, totalSalesShare, totalSubAgentShare, totalAgentShare, totalShopShare,
-            createdBy: req.user.username, salesId, subAgentId, agentId, shopId, status, description
-        });
 
-        // ✅ If stock is sold to a Shop, update Salesman/SubAgent stock and create a new stock entry for the Shop
-        // status will be "settled", cause it's already paid by sales
-        if (stockEvent === 'stock_out' && shopId) {
-            const lastSellerStock = await Stock.findOne({
-                where: { metricId, salesId, subAgentId },
-                order: [["createdAt", "DESC"]]
-            });
+        // Update stock fields
+        stock.status = "settled";
+        stock.initialAmount = initialAmount;
+        stock.updateAmount = updateAmount;
+        stock.totalSalesShare = totalSalesShare;
+        stock.totalDistributorShare = totalDistributorShare;
+        stock.totalSubAgentShare = totalSubAgentShare;
+        stock.totalAgentShare = totalAgentShare;
+        stock.totalShopShare = totalShopShare;
 
-            if (lastSellerStock) {
-                await lastSellerStock.update({ updateAmount: lastSellerStock.updateAmount - amount });
-            }
+        // Save updated stock entry
+        await stock.save();
 
-            await Stock.create({
-                metricId,
-                stockEvent: 'stock_out',
-                initialAmount: 0,
-                amount,
-                updateAmount: amount,
-                totalPrice,
+        if (stock.salesId) {
+
+            // ✅ Store Commission in SALESMANCOMMISSIONS Table
+            await SalesmanCommission.create({
+                stockId: id,
+                salesId: stock.salesId,
+                percentage: percentageMap["salesman"],
                 totalNetPrice,
-                totalDistributorShare,
-                totalSalesShare,
-                totalSubAgentShare,
-                totalAgentShare,
-                totalShopShare,
-                createdBy: req.user.username,
-                salesId,
-                subAgentId,
-                shopId,
-                status: "settled",
-                description: `Stock received from ${salesId ? "Salesman" : "SubAgent"}`
+                amount: totalSalesShare,
+                createdBy: req.user.username
             });
 
-            logger.info(`Stock moved to Shop ${shopId}: ${amount} units`);
+        } else if (stock.subAgentId) {
+
+            // ✅ Store Commission in SubAgentCommission Table
+            await SubAgentCommission.create({
+                stockId: id,
+                subAgentId: stock.subAgentId,
+                percentage: percentageMap["subAgent"],
+                totalNetPrice,
+                amount: totalSubAgentShare,
+                createdBy: req.user.username
+            });
+
+        } else {
+
+            // ✅ Store Commission in AgentCommission Table
+            await AgentCommission.create({
+                stockId: id,
+                agentId: stock.agentId,
+                percentage: percentageMap["agent"],
+                totalNetPrice,
+                amount: totalAgentShare,
+                createdBy: req.user.username
+            });
+
         }
 
-        logger.info(`Stock ${stockEvent} created for metric ${metricId}`);
-        res.status(201).json(stock);
+        return res.status(200).json({ message: "Stock status updated successfully", stock });
     } catch (error) {
-        logger.error(`Stock creation error: ${error.stack}`);
-        res.status(500).json({ error: "Stock creation failed" });
+        console.error("Error updating stock status:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+
+
+// exports.createStockCopyBackup = async (req, res) => {
+//     try {
+//         const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, status, description } = req.body;
+
+//         let initialAmount = 0;
+//         const lastStock = await Stock.findOne({ where: { metricId }, order: [["createdAt", "DESC"]] });
+//         if (lastStock) {
+//             initialAmount = lastStock.updateAmount ? lastStock.updateAmount : 0;
+//         }
+
+//         const updateAmount = stockEvent === 'stock_in' ? initialAmount + amount : initialAmount - amount;
+//         if (updateAmount < 0) return res.status(400).json({ message: 'Not enough stock' });
+
+//         // ✅ Fetch the latest price for this metric
+//         const latestPrice = await Price.findOne({ where: { metricId }, order: [["createdAt", "DESC"]] });
+//         if (!latestPrice) return res.status(400).json({ error: "No price available for this metric" });
+
+//         // ✅ Fetch percentage values
+//         const percentages = await Percentage.findAll();
+//         const percentageMap = {};
+//         percentages.forEach(p => { percentageMap[p.key] = p.value; });
+
+//         // ✅ Calculate stock values
+//         const totalPrice = amount * latestPrice.price;
+//         const totalNetPrice = totalPrice * (100 / percentageMap["supplier"]);
+
+//         let totalDistributorShare;
+//         let totalSalesShare = null;
+//         let totalSubAgentShare = null;
+//         let totalAgentShare = null;
+//         let totalShopShare = null;
+
+//         if (salesId) {
+//             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["salesman"]) / 100;
+//             totalSalesShare = totalNetPrice * (percentageMap["salesman"] / 100);
+//         } else if (subAgentId) {
+//             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["subAgent"]) / 100;
+//             totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] / 100);
+//         } else if (agentId) {
+//             /// kalau agent, tidak perlu bagi ke shop
+//             totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["agent"]) / 100;
+//             // totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["agent"]) / 100;
+
+//             totalAgentShare = totalNetPrice * (percentageMap["agent"] / 100);
+//         } else {
+//             totalDistributorShare = 0;
+//         }
+
+//         if (stockEvent === 'stock_out' && !agentId) {
+//             totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
+//         }
+
+//         // ✅ Create Stock Entry
+//         const stock = await Stock.create({
+//             metricId, stockEvent, initialAmount, amount, updateAmount, totalPrice, totalNetPrice,
+//             totalDistributorShare, totalSalesShare, totalSubAgentShare, totalAgentShare, totalShopShare,
+//             createdBy: req.user.username, salesId, subAgentId, agentId, shopId, status, description
+//         });
+
+//         // ✅ If stock is sold to a Shop, update Salesman/SubAgent stock and create a new stock entry for the Shop
+//         // status will be "settled", cause it's already paid by sales
+//         if (stockEvent === 'stock_out' && shopId) {
+//             const lastSellerStock = await Stock.findOne({
+//                 where: { metricId, salesId, subAgentId },
+//                 order: [["createdAt", "DESC"]]
+//             });
+
+//             if (lastSellerStock) {
+//                 await lastSellerStock.update({ updateAmount: lastSellerStock.updateAmount - amount });
+//             }
+
+//             await Stock.create({
+//                 metricId,
+//                 stockEvent: 'stock_out',
+//                 initialAmount: 0,
+//                 amount,
+//                 updateAmount: amount,
+//                 totalPrice,
+//                 totalNetPrice,
+//                 totalDistributorShare,
+//                 totalSalesShare,
+//                 totalSubAgentShare,
+//                 totalAgentShare,
+//                 totalShopShare,
+//                 createdBy: req.user.username,
+//                 salesId,
+//                 subAgentId,
+//                 shopId,
+//                 status: "settled",
+//                 description: `Stock received from ${salesId ? "Salesman" : "SubAgent"}`
+//             });
+
+//             logger.info(`Stock moved to Shop ${shopId}: ${amount} units`);
+//         }
+
+//         logger.info(`Stock ${stockEvent} created for metric ${metricId}`);
+//         res.status(201).json(stock);
+//     } catch (error) {
+//         logger.error(`Stock creation error: ${error.stack}`);
+//         res.status(500).json({ error: "Stock creation failed" });
+//     }
+// };
