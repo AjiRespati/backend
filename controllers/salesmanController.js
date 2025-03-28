@@ -16,7 +16,6 @@ exports.createSalesman = async (req, res) => {
 
 exports.salesmanList = async (req, res) => {
     try {
-        const { subAgentId } = req.params;
         const salesmen = await Salesman.findAll();
         res.json(salesmen);
     } catch (error) {
