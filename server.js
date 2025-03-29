@@ -30,6 +30,7 @@ const refrigeratorRoutes = require("./routes/refrigeratorRoutes");
 const agentCommissionRoutes = require("./routes/agentCommissionRoutes");
 const subAgentCommissionRoutes = require("./routes/subAgentCommissionRoutes");
 const salesmanCommissionRoutes = require("./routes/salesmanCommissionRoutes");
+const distributorCommissionRoutes = require("./routes/distributorCommissionRoutes");
 const shopCommissionRoutes = require("./routes/shopCommissionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 
@@ -52,6 +53,7 @@ app.use("/api/refrigerators", refrigeratorRoutes);
 app.use("/api/agentCommissions", agentCommissionRoutes);
 app.use("/api/subAgentCommissions", subAgentCommissionRoutes);
 app.use("/api/salesmanCommissions", salesmanCommissionRoutes);
+app.use("/api/distributorCommissions", distributorCommissionRoutes);
 app.use("/api/shopCommissions", shopCommissionRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 

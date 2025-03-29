@@ -1,7 +1,7 @@
 const db = require("../models");
 const sequelize = db.sequelize;
 const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
-    AgentCommission } = require("../models");
+    AgentCommission, DistributorCommission } = require("../models");
 const logger = require("../config/logger");
 
 exports.createStock = async (req, res) => {
@@ -262,6 +262,7 @@ exports.settlingStock = async (req, res) => {
         const percentages = await Percentage.findAll();
         const percentageMap = {};
         percentages.forEach(p => { percentageMap[p.key] = p.value; });
+        let distributorPercentage = 0;
 
         // ✅ Calculate stock values
         const totalPrice = amount * latestPrice.price;
@@ -274,14 +275,17 @@ exports.settlingStock = async (req, res) => {
         let totalShopShare = null;
 
         if (stock.salesId) {
-            totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["salesman"]) / 100;
+            distributorPercentage = 100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["salesman"];
+            totalDistributorShare = totalNetPrice * distributorPercentage / 100;
             totalSalesShare = totalNetPrice * (percentageMap["salesman"] / 100);
         } else if (stock.subAgentId) {
-            totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["subAgent"]) / 100;
+            distributorPercentage = 100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["subAgent"];
+            totalDistributorShare = totalNetPrice * distributorPercentage / 100;
             totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] / 100);
         } else if (stock.agentId) {
             /// kalau agent, tidak perlu bagi ke shop
-            totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["agent"]) / 100;
+            distributorPercentage = 100 - percentageMap["supplier"] - percentageMap["agent"];
+            totalDistributorShare = totalNetPrice * distributorPercentage / 100;
             // totalDistributorShare = totalNetPrice * (100 - percentageMap["supplier"] - percentageMap["shop"] - percentageMap["agent"]) / 100;
 
             totalAgentShare = totalNetPrice * (percentageMap["agent"] / 100);
@@ -344,6 +348,15 @@ exports.settlingStock = async (req, res) => {
             });
 
         }
+
+        // ✅ Store Commission in DistributorCommission Table
+        await DistributorCommission.create({
+            stockId: id,
+            percentage: distributorPercentage,
+            totalNetPrice,
+            amount: totalDistributorShare,
+            createdBy: req.user.username
+        });
 
         return res.status(200).json({ message: "Stock status updated successfully", stock });
     } catch (error) {
