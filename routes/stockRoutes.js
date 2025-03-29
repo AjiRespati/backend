@@ -11,8 +11,8 @@ router.get("/product/:productId", authMiddleware, stockListByProduct);
 router.get("/sales/:salesId", authMiddleware, stockListBySales);
 router.get("/subagent/:subAgentId", authMiddleware, stockListBySubAgent);
 router.get("/agent/:agentId", authMiddleware, stockListByAgent);
-router.get("/history", getStockHistory);
-router.get("/table", getStockTable);
-router.put("/settled", settlingStock);
+router.get("/history", authMiddleware, getStockHistory);
+router.get("/table", authMiddleware, getStockTable);
+router.put("/settled", authMiddleware, settlingStock);
 
 module.exports = router;

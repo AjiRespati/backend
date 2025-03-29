@@ -239,6 +239,7 @@ exports.settlingStock = async (req, res) => {
             return res.status(404).json({ message: "Stock entry not found or already settled" });
         }
 
+        let stockEvent = stock.stockEvent;
         let amount = stock.amount;
         let initialAmount = 0;
         const lastStock = await Stock.findOne({
@@ -288,7 +289,7 @@ exports.settlingStock = async (req, res) => {
             totalDistributorShare = 0;
         }
 
-        if (stockEvent === 'stock_out' && !agentId) {
+        if (stockEvent === 'stock_out' && !stock.agentId) {
             totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
         }
 
