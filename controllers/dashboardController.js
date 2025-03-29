@@ -1,4 +1,5 @@
-const { AgentCommission, SubAgentCommission, SalesmanCommission, ShopCommission } = require("../models");
+const { AgentCommission, SubAgentCommission, SalesmanCommission,
+    ShopCommission, DistributorCommission } = require("../models");
 
 exports.getCommissionSummary = async (req, res) => {
     try {
@@ -6,13 +7,16 @@ exports.getCommissionSummary = async (req, res) => {
         const subAgentTotal = await SubAgentCommission.sum('amount');
         const salesmanTotal = await SalesmanCommission.sum('amount');
         const shopTotal = await ShopCommission.sum('amount');
+        const distributorTotal = await DistributorCommission.sum('amount');
 
         res.json({
-            totalCommission: agentTotal + subAgentTotal + salesmanTotal + shopTotal,
             agentCommission: agentTotal || 0,
             subAgentCommission: subAgentTotal || 0,
             salesmanCommission: salesmanTotal || 0,
-            shopCommission: shopTotal || 0
+            shopCommission: shopTotal || 0,
+            distributorCommission: distributorTotal || 0,
+            totalCommission: (agentTotal || 0) + (subAgentTotal || 0)
+                + (salesmanTotal || 0) + (shopTotal || 0) + (distributorTotal || 0),
         });
     } catch (error) {
         console.error("❌ Commission Summary Error:", error);

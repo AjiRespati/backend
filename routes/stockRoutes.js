@@ -1,7 +1,7 @@
 const express = require("express");
 const { createStock, stockListByProduct, stockListBySales,
     stockListBySubAgent, stockListByAgent, getStockTable,
-    getStockHistory, settlingStock } = require("../controllers/stockController");
+    getStockHistory, settlingStock, cancelingStock } = require("../controllers/stockController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -14,5 +14,6 @@ router.get("/agent/:agentId", authMiddleware, stockListByAgent);
 router.get("/history", authMiddleware, getStockHistory);
 router.get("/table", authMiddleware, getStockTable);
 router.put("/settled", authMiddleware, settlingStock);
+router.put("/canceled", authMiddleware, cancelingStock);
 
 module.exports = router;
