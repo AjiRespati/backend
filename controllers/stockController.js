@@ -1,7 +1,7 @@
 const db = require("../models");
 const sequelize = db.sequelize;
 const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
-    AgentCommission, DistributorCommission } = require("../models");
+    AgentCommission, DistributorCommission, ShopAllCommission } = require("../models");
 const logger = require("../config/logger");
 
 exports.createStock = async (req, res) => {
@@ -141,7 +141,13 @@ exports.getStockHistory = async (req, res) => {
                 s."updateAmount",
                 s."totalPrice",
                 s."totalNetPrice",
+                s."totalDistributorShare",
+                s."totalSalesShare",
+                s."totalSubAgentShare",
+                s."totalAgentShare",
+                s."totalShopShare",
                 s."status",
+                s."description",
                 s."createdBy",
                 COALESCE(sa.name, ag.name, sm.name, sh.name, 'N/A') AS "relatedEntity",
                 CASE 
@@ -293,10 +299,12 @@ exports.settlingStock = async (req, res) => {
             totalDistributorShare = 0;
         }
 
-        if (stockEvent === 'stock_out' && !stock.agentId) {
-            totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
-        }
+        // ✅ Pastikan apakah shop commission selalu 20% (termasuk dari Agent).
+        totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
 
+        // if (stockEvent === 'stock_out' && !stock.agentId) {
+        //     totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
+        // }
 
         // Update stock fields
         stock.status = "settled";
@@ -349,12 +357,24 @@ exports.settlingStock = async (req, res) => {
 
         }
 
-        // ✅ Store Commission in DistributorCommission Table
+        // ✅ Store Distributor Commission in DistributorCommission Table
         await DistributorCommission.create({
             stockId: id,
             percentage: distributorPercentage,
             totalNetPrice,
             amount: totalDistributorShare,
+            createdBy: req.user.username
+        });
+
+        // ✅ Store All Shop Commission in ShopAllCommission Table
+        await ShopAllCommission.create({
+            stockId: id,
+            salesId: stock.salesId,
+            subAgentId: stock.subAgentId,
+            agentId: stock.agentId,
+            percentage: percentageMap["shop"],
+            totalNetPrice,
+            amount: totalShopShare,
             createdBy: req.user.username
         });
 

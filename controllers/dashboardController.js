@@ -1,22 +1,23 @@
 const { AgentCommission, SubAgentCommission, SalesmanCommission,
-    ShopCommission, DistributorCommission } = require("../models");
+    ShopCommission, DistributorCommission, ShopAllCommission } = require("../models");
 
 exports.getCommissionSummary = async (req, res) => {
     try {
         const agentTotal = await AgentCommission.sum('amount');
         const subAgentTotal = await SubAgentCommission.sum('amount');
         const salesmanTotal = await SalesmanCommission.sum('amount');
-        const shopTotal = await ShopCommission.sum('amount');
+        // const shopTotal = await ShopCommission.sum('amount');
+        const shopAllTotal = await ShopAllCommission.sum('amount');
         const distributorTotal = await DistributorCommission.sum('amount');
 
         res.json({
             agentCommission: agentTotal || 0,
             subAgentCommission: subAgentTotal || 0,
             salesmanCommission: salesmanTotal || 0,
-            shopCommission: shopTotal || 0,
+            shopCommission: shopAllTotal || 0,
             distributorCommission: distributorTotal || 0,
             totalCommission: (agentTotal || 0) + (subAgentTotal || 0)
-                + (salesmanTotal || 0) + (shopTotal || 0) + (distributorTotal || 0),
+                + (salesmanTotal || 0) + (shopAllTotal || 0) + (distributorTotal || 0),
         });
     } catch (error) {
         console.error("❌ Commission Summary Error:", error);
