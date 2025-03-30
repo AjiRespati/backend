@@ -410,3 +410,100 @@ exports.cancelingStock = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+
+exports.getStockResume = async (req, res) => {
+    const { fromDate, toDate, salesId } = req.body;
+
+    try {
+        const whereClause = {
+            salesId,
+            createdAt: {
+                [Op.between]: [new Date(fromDate), new Date(toDate)]
+            }
+        };
+
+        const stockResume = await Stock.findAll({
+            where: whereClause,
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalAmount'],
+                [sequelize.fn('SUM', sequelize.col('totalNetPrice')), 'totalNetPriceSum'],
+            ],
+            raw: true
+        });
+
+        const salesmanCommissions = await SalesmanCommission.findAll({
+            where: whereClause,
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalSalesmanCommission']
+            ],
+            raw: true
+        });
+
+        const shopAllCommissions = await ShopAllCommission.findAll({
+            where: whereClause,
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalShopAllCommission']
+            ],
+            raw: true
+        });
+
+        return res.status(200).json({
+            totalAmount: stockResume[0]?.totalAmount || 0,
+            totalNetPriceSum: stockResume[0]?.totalNetPriceSum || 0,
+            totalSalesmanCommission: salesmanCommissions[0]?.totalSalesmanCommission || 0,
+            totalShopAllCommission: shopAllCommissions[0]?.totalShopAllCommission || 0
+        });
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+exports.getTableBySalesId = async (req, res) => {
+    const { fromDate, toDate, salesId } = req.body;
+
+    try {
+        const stocks = await Stock.findAll({
+            where: {
+                salesId,
+                createdAt: {
+                    [Op.between]: [new Date(fromDate), new Date(toDate)]
+                }
+            },
+            include: [
+                {
+                    model: Metrics,
+                    include: [
+                        {
+                            model: Products,
+                            attributes: ['name']
+                        }
+                    ],
+                    attributes: ['metricType']
+                },
+                {
+                    model: SalesmanCommissions,
+                    attributes: ['amount']
+                },
+                {
+                    model: ShopAllCommissions,
+                    attributes: ['amount']
+                }
+            ],
+            attributes: [
+                'amount',
+                'totalNetPrice',
+                [sequelize.literal('"Prices"."netPrice"'), 'netPrice']
+            ]
+        });
+        return res.status(200).json(stocks);
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
