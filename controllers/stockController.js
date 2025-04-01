@@ -1,6 +1,8 @@
 const db = require("../models");
 const sequelize = db.sequelize;
-const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
+const Sequelize = db.Sequelize;
+const { Op } = Sequelize;
+const { Stock, Metric, Product, Price, Percentage, SalesmanCommission, SubAgentCommission,
     AgentCommission, DistributorCommission, ShopAllCommission } = require("../models");
 const logger = require("../config/logger");
 
@@ -466,39 +468,42 @@ exports.getTableBySalesId = async (req, res) => {
     const { fromDate, toDate, salesId } = req.body;
 
     try {
-        const stocks = await Stock.findAll({
-            where: {
-                salesId,
-                createdAt: {
-                    [Op.between]: [new Date(fromDate), new Date(toDate)]
-                }
+        const query = `
+            SELECT 
+                s.id,
+                s.amount,
+                s."totalNetPrice",
+                s.status,
+                s."updatedAt",
+                p.name AS "productName",
+                m."metricType",
+                pr."netPrice",
+                sc.amount AS "salesmanCommission",
+                sac.amount AS "shopAllCommission"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN (
+                SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
+                FROM "Prices" 
+                ORDER BY "metricId", "createdAt" DESC
+            ) pr ON m.id = pr."metricId"
+            LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
+            LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
+            WHERE s."salesId" = :salesId
+            AND s."createdAt" BETWEEN :fromDate AND :toDate
+            ORDER BY s."createdAt" DESC
+        `;
+
+        const stocks = await sequelize.query(query, {
+            replacements: { 
+                salesId, 
+                fromDate: new Date(fromDate), 
+                toDate: new Date(toDate) 
             },
-            include: [
-                {
-                    model: Metrics,
-                    include: [
-                        {
-                            model: Products,
-                            attributes: ['name']
-                        }
-                    ],
-                    attributes: ['metricType']
-                },
-                {
-                    model: SalesmanCommissions,
-                    attributes: ['amount']
-                },
-                {
-                    model: ShopAllCommissions,
-                    attributes: ['amount']
-                }
-            ],
-            attributes: [
-                'amount',
-                'totalNetPrice',
-                [sequelize.literal('"Prices"."netPrice"'), 'netPrice']
-            ]
+            type: sequelize.QueryTypes.SELECT
         });
+
         return res.status(200).json(stocks);
 
     } catch (error) {

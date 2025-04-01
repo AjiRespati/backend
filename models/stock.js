@@ -31,6 +31,12 @@ module.exports = (sequelize, DataTypes) => {
         Stock.belongsTo(models.SubAgent, { foreignKey: "subAgentId" });
         Stock.belongsTo(models.Agent, { foreignKey: "agentId" });
         Stock.belongsTo(models.Shop, { foreignKey: "shopId" });
+        Stock.hasOne(models.SalesmanCommission, {
+            foreignKey: 'stockId'// Singular name for one-to-one
+        });
+        Stock.hasOne(models.ShopAllCommission, {
+            foreignKey: 'stockId'// Singular name for one-to-one
+        });
     };
 
     return Stock;
