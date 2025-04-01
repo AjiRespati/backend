@@ -10,8 +10,8 @@ exports.register = async (req, res) => {
 
         const existingUser = await User.findOne({ where: { username } });
         if (existingUser) return res.status(400).json({ message: 'Username already exists' });
- 
-         await User.create({
+
+        await User.create({
             username,
             password: hashedPassword,
             name,
@@ -90,6 +90,33 @@ exports.logout = async (req, res) => {
         await user.save();
 
         res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+exports.self = async (req, res) => {
+    try {
+        const { refreshToken } = req.body;
+        console.log(req.body);
+        if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
+
+        // Remove refresh token from DB
+        const user = await User.findOne({ where: { refreshToken } });
+        if (!user) return res.status(403).json({ message: 'Invalid refresh token' });
+
+        res.json({
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            image: user.image,
+            address: user.address,
+            phone: user.phone,
+            email: user.email,
+            level: user.level,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });

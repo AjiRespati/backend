@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
         phone: { type: DataTypes.STRING, allowNull: true, unique: true },
         email: { type: DataTypes.STRING, allowNull: true, unique: true },
         level: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-        updateBy: { type: DataTypes.STRING, allowNull: false }
+        updateBy: { type: DataTypes.STRING, allowNull: true }
     }, { timestamps: true });
 
     User.associate = (models) => {
