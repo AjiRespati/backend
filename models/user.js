@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
         phone: { type: DataTypes.STRING, allowNull: true, unique: true },
         email: { type: DataTypes.STRING, allowNull: true, unique: true },
         level: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        status: { type: DataTypes.ENUM("new", "active", "inactive"), allowNull: false, defaultValue: "new" },
         updateBy: { type: DataTypes.STRING, allowNull: true }
     }, { timestamps: true });
 
