@@ -16,6 +16,7 @@ app.use(morgan("combined", { stream: { write: (message) => logger.info(message.t
 
 // ✅ Routes
 const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
 const metricRoutes = require("./routes/metricRoutes");
 const priceRoutes = require("./routes/priceRoutes");
@@ -39,6 +40,7 @@ app.use('/api/uploads', express.static('uploads'));
 
 // ✅ Register Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/metrics", metricRoutes);
 app.use("/api/prices", priceRoutes);

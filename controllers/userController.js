@@ -3,7 +3,12 @@ const logger = require('../config/logger');
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const data = await User.findAll();
+        let data = await User.findAll();
+
+        data.forEach(el => {
+            el['password'] = undefined;
+        });
+
         res.json(data);
     } catch (error) {
         logger.error(error);
