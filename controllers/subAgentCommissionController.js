@@ -30,7 +30,7 @@ exports.settleSubAgentCommission = async (req, res) => {
         });
 
         logger.info(`✅ SubAgent Commission Settled for Stock: ${stockId}`);
-        res.status(201).json(commission);
+        res.status(200).json(commission);
     } catch (error) {
         logger.error(`❌ SubAgent Commission Settlement Error: ${error.stack}`);
         res.status(500).json({ error: "Failed to settle sub-agent commission" });

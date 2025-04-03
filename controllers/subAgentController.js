@@ -7,7 +7,7 @@ exports.createSubAgent = async (req, res) => {
         const subAgent = await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username });
 
         logger.info(`SubAgent created: ${subAgent.name}`);
-        res.status(201).json(subAgent);
+        res.status(200).json(subAgent);
     } catch (error) {
         logger.error(`SubAgent creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create sub-agent" });

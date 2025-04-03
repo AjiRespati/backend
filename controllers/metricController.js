@@ -25,7 +25,7 @@ exports.createMetric = async (req, res) => {
         });
 
         logger.info(`Metric created for product: ${productId}`);
-        res.status(201).json(metric);
+        res.status(200).json(metric);
     } catch (error) {
         logger.error(`Metric creation error: ${error.stack}`);
         res.status(500).json({ error: "Metric creation failed" });

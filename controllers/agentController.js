@@ -14,7 +14,7 @@ exports.createAgent = async (req, res) => {
         });
 
         logger.info(`Agent created: ${agent.name}`);
-        res.status(201).json(agent);
+        res.status(200).json(agent);
     } catch (error) {
         logger.error(`Agent creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create agent" });

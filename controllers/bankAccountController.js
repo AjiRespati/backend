@@ -7,7 +7,7 @@ exports.createBankAccount = async (req, res) => {
         const bankAccount = await BankAccount.create({ salesId, subAgentId, agentId, accountNumber, accountName, bankName, bankCode });
 
         logger.info(`Bank account created for: ${accountName}`);
-        res.status(201).json(bankAccount);
+        res.status(200).json(bankAccount);
     } catch (error) {
         logger.error(`Bank account creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create bank account" });
@@ -58,7 +58,7 @@ exports.updateBankAccount = async (req, res) => {
         await bank.save();
 
         logger.info(`Bank account created for: ${accountName}`);
-        res.status(201).json(bank);
+        res.status(200).json(bank);
     } catch (error) {
         logger.error(`Bank account creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create bank account" });

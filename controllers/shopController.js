@@ -7,7 +7,7 @@ exports.createShop = async (req, res) => {
         const shop = await Shop.create({ name, image, address, coordinates, phone, email, updateBy: req.user.username });
 
         logger.info(`Shop created: ${shop.name}`);
-        res.status(201).json(shop);
+        res.status(200).json(shop);
     } catch (error) {
         logger.error(`Shop creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create shop" });

@@ -7,7 +7,7 @@ exports.createPrice = async (req, res) => {
         const newPrice = await Price.create({ metricId, price, netPrice, updateBy: req.user.username });
 
         logger.info(`Price added for metric: ${metricId}`);
-        res.status(201).json(newPrice);
+        res.status(200).json(newPrice);
     } catch (error) {
         logger.error(`Price creation error: ${error.stack}`);
         res.status(500).json({ error: "Price creation failed" });

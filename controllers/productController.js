@@ -40,7 +40,7 @@ exports.createProduct = async (req, res) => {
             updateBy: req.user.username
         });
 
-        res.status(201).json(product);
+        res.status(200).json(product);
     } catch (error) {
         console.error("❌ Product Creation Error:", error);
         res.status(500).json({ error: "Failed to create product" });

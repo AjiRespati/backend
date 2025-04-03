@@ -20,7 +20,7 @@ exports.createPercentage = async (req, res) => {
         percentage = await Percentage.create({ key, value, updateBy: req.user.username });
 
         logger.info(`Percentage created: ${key} = ${value}`);
-        res.status(201).json(percentage);
+        res.status(200).json(percentage);
     } catch (error) {
         logger.error(`Percentage creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create percentage" });

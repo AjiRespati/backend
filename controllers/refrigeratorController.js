@@ -7,7 +7,7 @@ exports.createRefrigerator = async (req, res) => {
         const refrigerator = await Refrigerator.create({ name, capacity, serialNumber, coordinates, shopId, status, deliveryDate, deliveryBy });
 
         logger.info(`Refrigerator created: ${refrigerator.name} (Serial: ${serialNumber})`);
-        res.status(201).json(refrigerator);
+        res.status(200).json(refrigerator);
     } catch (error) {
         logger.error(`Refrigerator creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create refrigerator" });

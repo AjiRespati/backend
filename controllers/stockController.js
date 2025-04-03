@@ -61,7 +61,7 @@ exports.createStock = async (req, res) => {
         });
 
         logger.info(`Stock ${stockEvent} created for metric ${metricId}`);
-        res.status(201).json(stock);
+        res.status(200).json(stock);
     } catch (error) {
         logger.error(`Stock creation error: ${error.stack}`);
         res.status(500).json({ error: "Stock creation failed" });

@@ -7,7 +7,7 @@ exports.createSalesman = async (req, res) => {
         const salesman = await Salesman.create({ name, image, address, phone, email, updateBy: req.user.username });
 
         logger.info(`Salesman created: ${salesman.name}`);
-        res.status(201).json(salesman);
+        res.status(200).json(salesman);
     } catch (error) {
         logger.error(`Salesman creation error: ${error.stack}`);
         res.status(500).json({ error: "Failed to create salesman" });

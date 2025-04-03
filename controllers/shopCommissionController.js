@@ -28,7 +28,7 @@ exports.settleShopCommission = async (req, res) => {
         });
 
         logger.info(`✅ Shop Commission Settled for Stock: ${stockId}`);
-        res.status(201).json(commission);
+        res.status(200).json(commission);
     } catch (error) {
         logger.error(`❌ Shop Commission Settlement Error: ${error.stack}`);
         res.status(500).json({ error: "Failed to settle shop commission" });

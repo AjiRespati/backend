@@ -22,7 +22,7 @@ exports.register = async (req, res) => {
             updateBy
         });
 
-        res.status(201).json({ message: 'User registered successfully' });
+        res.status(200).json({ message: 'User registered successfully' });
     } catch (error) {
         logger.error(error.message, { stack: error.stack });
         res.status(500).json({ message: 'Error registering user', error: error.message });
@@ -35,7 +35,7 @@ exports.login = async (req, res) => {
         const user = await User.findOne({ where: { username } });
 
         if (!user || !bcrypt.compareSync(password, user.password)) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(402).json({ message: 'Invalid credentials' });
         }
 
         // Generate tokens

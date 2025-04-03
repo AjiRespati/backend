@@ -30,7 +30,7 @@ exports.settleDistributorCommission = async (req, res) => {
         });
 
         logger.info(`✅ Distributor Commission Settled for Stock: ${stockId}`);
-        res.status(201).json(commission);
+        res.status(200).json(commission);
     } catch (error) {
         logger.error(`❌ Distributor Commission Settlement Error: ${error.stack}`);
         res.status(500).json({ error: "Failed to settle Distributor commission" });

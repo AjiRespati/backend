@@ -1,4 +1,4 @@
-const { User } = require('../models');
+const { User, Salesman, SubAgent, Agent } = require('../models');
 const logger = require('../config/logger');
 
 exports.getAllUsers = async (req, res) => {
@@ -32,7 +32,7 @@ exports.getUserById = async (req, res) => {
 exports.createUser = async (req, res) => {
     try {
         const data = await User.create(req.body);
-        res.status(201).json(data);
+        res.status(200).json(data);
     } catch (error) {
         logger.error(error);
         res.status(400).json({ error: 'Bad Request' });
@@ -47,11 +47,81 @@ exports.updateUser = async (req, res) => {
         const existingUser = await User.findByPk(id);
         if (!existingUser) return res.status(404).json({ error: 'user not found' });
 
+        const { name, image, address, phone, email } = existingUser;
+
         existingUser.level = level || existingUser.level;
         existingUser.status = status || existingUser.status;
 
+        const existingSales = await Salesman.findOne({
+            where: { email }
+        })
+
+        const existingSubAgent = await SubAgent.findOne({
+            where: { email }
+        })
+
+        const existingAgent = await Agent.findOne({
+            where: { email }
+        })
+
         if (level !== null && level !== undefined) {
             existingUser.levelDesc = levelDescList[level];
+            switch (level) {
+                case 1:
+                    if (existingSubAgent) {
+                        await SubAgent.destroy({
+                            where: { email }
+                        });
+                    }
+
+                    if (existingAgent) {
+                        await Agent.destroy({
+                            where: { email }
+                        });
+                    }
+
+                    await Salesman.create({ name, image, address, phone, email, updateBy: req.user.username });
+                    logger.info(`Salesman created`);
+                    break;
+
+                case 2:
+                    if (existingSales) {
+                        await Salesman.destroy({
+                            where: { email }
+                        });
+                    }
+
+                    if (existingAgent) {
+                        await Agent.destroy({
+                            where: { email }
+                        });
+                    }
+
+                    await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username });
+                    logger.info(`SubAgent created`);
+                    break;
+
+
+                case 3:
+                    if (existingSales) {
+                        await Salesman.destroy({
+                            where: { email }
+                        });
+                    }
+
+                    if (existingSubAgent) {
+                        await SubAgent.destroy({
+                            where: { email }
+                        });
+                    }
+                    
+                    await Agent.create({ name, image, address, phone, email, updateBy: req.user.username });
+                    logger.info(`Agent created`);
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         await existingUser.save();
