@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
         id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
         name: { type: DataTypes.STRING, allowNull: false },
         image: { type: DataTypes.STRING },
-        address: { type: DataTypes.STRING },
+        address: { type: DataTypes.STRING, allowNull: false },
         coordinates: { type: DataTypes.STRING, allowNull: true }, // Store coordinates as a string "latitude,longitude"
         phone: { type: DataTypes.STRING, unique: true },
         email: { type: DataTypes.STRING, unique: true },

@@ -44,6 +44,7 @@ exports.updateUser = async (req, res) => {
         const { id } = req.params;
         const { level, status } = req.body;
 
+        // 1. find user by id
         const existingUser = await User.findByPk(id);
         if (!existingUser) return res.status(404).json({ error: 'user not found' });
 
@@ -52,71 +53,113 @@ exports.updateUser = async (req, res) => {
         existingUser.level = level || existingUser.level;
         existingUser.status = status || existingUser.status;
 
+        // 2. Find if already sign as Salesman
         const existingSales = await Salesman.findOne({
             where: { email }
         })
 
+        // 3. Find if already sign as SubAgent
         const existingSubAgent = await SubAgent.findOne({
             where: { email }
         })
 
+        // 2. Find if already sign as Agent
         const existingAgent = await Agent.findOne({
             where: { email }
         })
 
+        // If process is update level
         if (level !== null && level !== undefined) {
+
+            // update level decription
             existingUser.levelDesc = levelDescList[level];
+
             switch (level) {
+                // if update to Salesman
                 case 1:
                     if (existingSubAgent) {
-                        await SubAgent.destroy({
-                            where: { email }
-                        });
+                        existingSubAgent.status = "inactive"
+                        await existingSubAgent.save();
+                        // await SubAgent.destroy({
+                        //     where: { email }
+                        // });
                     }
 
                     if (existingAgent) {
-                        await Agent.destroy({
-                            where: { email }
-                        });
+                        existingAgent.status = "inactive"
+                        await existingAgent.save();
+
+                        // await Agent.destroy({
+                        //     where: { email }
+                        // });
                     }
 
-                    await Salesman.create({ name, image, address, phone, email, updateBy: req.user.username });
-                    logger.info(`Salesman created`);
+                    if (existingSales) {
+                        existingSales.status = "active"
+                        await existingSales.save();
+                    } else {
+                        await Salesman.create({ name, image, address, phone, email, updateBy: req.user.username });
+                        logger.info(`Salesman created`);
+                    }
+
                     break;
 
                 case 2:
                     if (existingSales) {
-                        await Salesman.destroy({
-                            where: { email }
-                        });
+                        existingSales.status = "inactive"
+                        await existingSales.save();
+                        // await Salesman.destroy({
+                        //     where: { email }
+                        // });
                     }
 
                     if (existingAgent) {
-                        await Agent.destroy({
-                            where: { email }
-                        });
+                        existingAgent.status = "inactive"
+                        await existingAgent.save();
+                        // await Agent.destroy({
+                        //     where: { email }
+                        // });
                     }
 
-                    await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username });
-                    logger.info(`SubAgent created`);
+                    if (existingSubAgent) {
+                        existingSubAgent.status = "active"
+                        await existingSubAgent.save();
+                    } else {
+                        await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username });
+                        logger.info(`SubAgent created`);
+                    }
+
                     break;
 
 
                 case 3:
                     if (existingSales) {
-                        await Salesman.destroy({
-                            where: { email }
-                        });
+                        existingSales.status = "inactive"
+                        await existingSales.save();
+                        // await Salesman.destroy({
+                        //     where: { email }
+                        // });
                     }
 
                     if (existingSubAgent) {
-                        await SubAgent.destroy({
-                            where: { email }
-                        });
+                        existingSubAgent.status = "inactive"
+                        await existingSubAgent.save();
+                        // await SubAgent.destroy({
+                        //     where: { email }
+                        // });
                     }
-                    
-                    await Agent.create({ name, image, address, phone, email, updateBy: req.user.username });
-                    logger.info(`Agent created`);
+
+                    if (existingAgent) {
+                        existingAgent.status = "active"
+                        await existingAgent.save();
+                        // await Agent.destroy({
+                        //     where: { email }
+                        // });                        
+                    } else {
+                        await Agent.create({ name, image, address, phone, email, updateBy: req.user.username });
+                        logger.info(`Agent created`);
+                    }
+
                     break;
 
                 default:
