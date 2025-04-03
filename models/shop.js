@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         coordinates: { type: DataTypes.STRING, allowNull: true }, // Store coordinates as a string "latitude,longitude"
         phone: { type: DataTypes.STRING, unique: true },
         email: { type: DataTypes.STRING, unique: true },
+        status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
         updateBy: { type: DataTypes.STRING }
     }, { timestamps: true });
 
@@ -15,4 +16,4 @@ module.exports = (sequelize, DataTypes) => {
     };
 
     return Shop;
-};
+}

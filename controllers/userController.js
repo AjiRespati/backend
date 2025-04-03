@@ -3,7 +3,9 @@ const logger = require('../config/logger');
 
 exports.getAllUsers = async (req, res) => {
     try {
-        let data = await User.findAll();
+        let data = await User.findAll({
+            order: [["createdAt", "DESC"]]
+        });
 
         data.forEach(el => {
             el['password'] = undefined;
@@ -39,11 +41,23 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
     try {
-        const data = await User.findByPk(req.params.id);
-        if (!data) return res.status(404).json({ error: 'user not found' });
+        const { id } = req.params;
+        const { level, status } = req.body;
 
-        await data.update(req.body);
-        res.json(data);
+        const existingUser = await User.findByPk(id);
+        if (!existingUser) return res.status(404).json({ error: 'user not found' });
+
+        existingUser.level = level || existingUser.level;
+        existingUser.status = status || existingUser.status;
+
+        if (level !== null && level !== undefined) {
+            existingUser.levelDesc = levelDescList[level];
+        }
+
+        await existingUser.save();
+        logger.info(`User updated: ${id}`);
+
+        res.json(existingUser);
     } catch (error) {
         logger.error(error);
         res.status(400).json({ error: 'Bad Request' });
@@ -62,3 +76,12 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+const levelDescList = [
+    "New User",
+    "Salesman",
+    "Sub Agent",
+    "Agent",
+    "Admin",
+    "Owner",
+];

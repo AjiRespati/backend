@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
         address: { type: DataTypes.STRING },
         phone: { type: DataTypes.STRING, unique: true },
         email: { type: DataTypes.STRING, unique: true },
+        status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
         updateBy: { type: DataTypes.STRING }
     }, { timestamps: true });
 
@@ -14,4 +15,4 @@ module.exports = (sequelize, DataTypes) => {
     };
 
     return Salesman;
-};
+}
