@@ -11,7 +11,8 @@ module.exports = (sequelize, DataTypes) => {
         deliveryBy: { type: DataTypes.STRING, allowNull: true },
         retrieveDate: { type: DataTypes.DATE, allowNull: true },
         retrieveBy: { type: DataTypes.STRING, allowNull: true },
-        repairedDate: { type: DataTypes.DATE, allowNull: true },
+        repairingStart: { type: DataTypes.DATE, allowNull: true },
+        repairingFinish: { type: DataTypes.DATE, allowNull: true },
         repairedBy: { type: DataTypes.STRING, allowNull: true }
     }, { timestamps: true });
 
