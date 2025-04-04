@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User } = require("../models");
+const { User, Salesman, SubAgent, Agent } = require("../models");
 const logger = require('../config/logger');
 
 exports.register = async (req, res) => {
@@ -100,12 +100,48 @@ exports.logout = async (req, res) => {
 exports.self = async (req, res) => {
     try {
         const { refreshToken } = req.body;
-        console.log(req.body);
-        if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
+        if (!refreshToken) return res.status(401).json({ message: 'Refresh token required' });
 
         // Remove refresh token from DB
         const user = await User.findOne({ where: { refreshToken } });
         if (!user) return res.status(403).json({ message: 'Invalid refresh token' });
+
+        let salesId = null;
+        let subAgentId = null;
+        let agentId = null;
+
+        switch (user.level) {
+            case 1:
+                const existingSales = await Salesman.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingSales) return res.status(404).json({ error: 'sales not found' });
+
+                salesId = existingSales.id;
+
+                break;
+            case 2:
+                const existingSubAgent = await SubAgent.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingSubAgent) return res.status(404).json({ error: 'subagent not found' });
+
+                subAgentId = existingSubAgent.id;
+
+                break;
+            case 1:
+                const existingAgent = await Agent.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingAgent) return res.status(404).json({ error: 'sales not found' });
+
+                agentId = existingAgent.id;
+
+                break;
+
+            default:
+                break;
+        }
 
         res.json({
             id: user.id,
@@ -116,6 +152,9 @@ exports.self = async (req, res) => {
             phone: user.phone,
             email: user.email,
             level: user.level,
+            salesId: salesId,
+            subAgentId: subAgentId,
+            agentId: agentId,
         });
     } catch (error) {
         console.error(error);

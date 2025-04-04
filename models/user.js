@@ -15,10 +15,5 @@ module.exports = (sequelize, DataTypes) => {
         status: { type: DataTypes.ENUM("new", "active", "inactive"), allowNull: false, defaultValue: "new" },
         updateBy: { type: DataTypes.STRING, allowNull: true }
     }, { timestamps: true });
-
-    // User.associate = (models) => {
-    //     // Define associations here if needed
-    // };
-
     return User;
 };

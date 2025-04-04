@@ -3,13 +3,15 @@ const logger = require("../config/logger");
 
 exports.createShop = async (req, res) => {
     try {
-        const { name, image, address, coordinates, phone, email, updateBy } = req.body;
-        const shop = await Shop.create({ name, image, address, coordinates, phone, email, updateBy: req.user.username });
+        const { name, image, address, coordinates, phone, email, salesId } = req.body;
+        logger.info(`Shop : ${JSON.stringify(req.body)}`);
+        const shop = await Shop.create({ name, image, address, coordinates, phone, email, salesId, updateBy: req.user.username });
 
         logger.info(`Shop created: ${shop.name}`);
         res.status(200).json(shop);
     } catch (error) {
-        logger.error(`Shop creation error: ${error.stack}`);
+        console.error('Unique Constraint Error:', error.errors[0].message);
+        logger.error(`Shop creation error: ${error}`);
         res.status(500).json({ error: "Failed to create shop" });
     }
 };
@@ -17,6 +19,20 @@ exports.createShop = async (req, res) => {
 exports.getAllShops = async (req, res) => {
     try {
         const shops = await Shop.findAll();
+        res.json(shops);
+    } catch (error) {
+        logger.error(`Fetching shops error: ${error.stack}`);
+        res.status(500).json({ error: "Failed to retrieve shops" });
+    }
+};
+
+
+exports.getAllShopsBySales = async (req, res) => {
+    try {
+        const { salesId } = req.params;
+        const shops = await Shop.findAll({
+            where: { salesId }
+        });
         res.json(shops);
     } catch (error) {
         logger.error(`Fetching shops error: ${error.stack}`);
