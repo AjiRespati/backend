@@ -1,4 +1,4 @@
-const { Shop } = require("../models");
+const { Shop, Refrigerator } = require("../models");
 const logger = require("../config/logger");
 
 exports.createShop = async (req, res) => {
@@ -12,7 +12,7 @@ exports.createShop = async (req, res) => {
     } catch (error) {
         console.error('Unique Constraint Error:', error.errors[0].message);
         logger.error(`Shop creation error: ${error}`);
-        res.status(500).json({ error: "Failed to create shop" });
+        res.status(500).json({ error: error.errors[0].message });
     }
 };
 
@@ -30,9 +30,37 @@ exports.getAllShops = async (req, res) => {
 exports.getAllShopsBySales = async (req, res) => {
     try {
         const { salesId } = req.params;
-        const shops = await Shop.findAll({
-            where: { salesId }
+        let shops = [];
+        const salesmanShops = await Shop.findAll({
+            where: { salesId },
+            include: [{
+                model: Refrigerator,
+                //   as: 'Refrigerators', // Optional: Provide an alias for the association
+            }],
         });
+        const subAgentShops = await Shop.findAll({
+            where: { subAgentId: salesId },
+            include: [{
+                model: Refrigerator,
+                //   as: 'Refrigerators', // Optional: Provide an alias for the association
+            }],
+        });
+        const agentShops = await Shop.findAll({
+            where: { agentId: salesId },
+            include: [{
+                model: Refrigerator,
+                //   as: 'Refrigerators', // Optional: Provide an alias for the association
+            }],
+        });
+
+        if (salesmanShops.length > 0) {
+            shops = salesmanShops;
+        } else if (subAgentShops.length > 0) {
+            shops = subAgentShops;
+        } else {
+            shops = agentShops;            
+        }
+
         res.json(shops);
     } catch (error) {
         logger.error(`Fetching shops error: ${error.stack}`);

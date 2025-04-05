@@ -7,4 +7,15 @@ Salesman Menu:
 
 
 
-TODO: Benerin refresh token dulu 
+TODO: Benerin refresh token dulu => DONE
+
+TODO: FREEZER Implementation
+
+status freezer flow.
+1. Baru didaftarkan => "IDLE" => "ADMIN"
+
+2. Assign ke sebuah toko => "ACTIVE" => "ADMIN"
+
+3. Laporan rusak => "BROKEN" => "SALES"
+
+4. Tidak bisa diperbaiki => "WASTED" => "ADMIN"

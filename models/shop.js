@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         image: { type: DataTypes.STRING },
         address: { type: DataTypes.STRING, allowNull: false },
         coordinates: { type: DataTypes.STRING, allowNull: true }, // Store coordinates as a string "latitude,longitude"
-        phone: { type: DataTypes.STRING, allowNull: false },
+        phone: { type: DataTypes.STRING, allowNull: false, unique: false  },
         email: { type: DataTypes.STRING, allowNull: true, unique: false },
         status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
         updateBy: { type: DataTypes.STRING }
