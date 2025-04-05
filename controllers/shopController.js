@@ -18,10 +18,16 @@ exports.createShop = async (req, res) => {
 
 exports.getAllShops = async (req, res) => {
     try {
-        const shops = await Shop.findAll();
+        const shops = await Shop.findAll({
+            include: [{
+                model: Refrigerator,
+                //   as: 'Refrigerators', // Optional: Provide an alias for the association
+            }],
+            order: [['updatedAt', 'DESC']], // Sort by updatedAt
+        });
         res.json(shops);
     } catch (error) {
-        logger.error(`Fetching shops error: ${error.stack}`);
+        logger.error(`Fetching shops error: ${error}`);
         res.status(500).json({ error: "Failed to retrieve shops" });
     }
 };
@@ -58,7 +64,7 @@ exports.getAllShopsBySales = async (req, res) => {
         } else if (subAgentShops.length > 0) {
             shops = subAgentShops;
         } else {
-            shops = agentShops;            
+            shops = agentShops;
         }
 
         res.json(shops);
@@ -71,12 +77,22 @@ exports.getAllShopsBySales = async (req, res) => {
 exports.updateShop = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, image, address, coordinates, phone, email, updateBy } = req.body;
+        const { name, image, address, coordinates, phone, email, status, updateBy } = req.body;
 
         const shop = await Shop.findByPk(id);
         if (!shop) return res.status(404).json({ error: "Shop not found" });
 
-        Object.assign(shop, { name, image, address, coordinates, phone, email, updateBy: req.user.username });
+        // Object.assign(shop, { name, image, address, coordinates, phone, email, updateBy: req.user.username });
+
+        shop.name = name || shop.name;
+        shop.image = image || shop.image;
+        shop.address = address || shop.address;
+        shop.coordinates = coordinates || shop.coordinates;
+        shop.phone = phone || shop.phone;
+        shop.email = email || shop.email;
+        shop.status = status || shop.status;
+        shop.updateBy = req.user.username;
+
         await shop.save();
 
         logger.info(`Shop updated: ${shop.name}`);

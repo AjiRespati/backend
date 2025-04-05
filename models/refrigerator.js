@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
         serialNumber: { type: DataTypes.STRING, unique: true, allowNull: false },
         coordinates: { type: DataTypes.STRING, allowNull: true }, // Store coordinates as a string "latitude,longitude"
         shopId: { type: DataTypes.UUID, allowNull: true },
-        status: { type: DataTypes.ENUM("idle", "active", "broken", "wasted"), allowNull: false, defaultValue: "idle" },
+        status: { type: DataTypes.ENUM("idle", "active", "broken", "repairing", "wasted"), allowNull: false, defaultValue: "idle" },
         deliveryDate: { type: DataTypes.DATE, allowNull: true },
         deliveryBy: { type: DataTypes.STRING, allowNull: true },
         retrieveDate: { type: DataTypes.DATE, allowNull: true },

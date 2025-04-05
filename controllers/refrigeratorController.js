@@ -1,4 +1,4 @@
-const { Refrigerator } = require("../models");
+const { Refrigerator, Shop } = require("../models");
 const logger = require("../config/logger");
 
 exports.createRefrigerator = async (req, res) => {
@@ -16,7 +16,11 @@ exports.createRefrigerator = async (req, res) => {
 
 exports.getAllRefrigerators = async (req, res) => {
     try {
-        const refrigerators = await Refrigerator.findAll();
+        const refrigerators = await Refrigerator.findAll({
+            include: {
+                model: Shop
+            }
+        });
         res.json(refrigerators);
     } catch (error) {
         logger.error(`Fetching refrigerators error: ${error.stack}`);
@@ -32,7 +36,18 @@ exports.updateRefrigerator = async (req, res) => {
         const refrigerator = await Refrigerator.findByPk(id);
         if (!refrigerator) return res.status(404).json({ error: "Refrigerator not found" });
 
-        Object.assign(refrigerator, { name, capacity, serialNumber, coordinates, shopId, status, retrieveDate, retrieveBy, repairedDate, repairedBy });
+        // Object.assign(refrigerator, { name, capacity, serialNumber, coordinates, shopId, status, retrieveDate, retrieveBy, repairedDate, repairedBy });
+        refrigerator.name = name || refrigerator.name;
+        refrigerator.capacity = capacity || refrigerator.capacity;
+        refrigerator.serialNumber = serialNumber || refrigerator.serialNumber;
+        refrigerator.coordinates = coordinates || refrigerator.coordinates;
+        refrigerator.shopId = shopId || refrigerator.shopId;
+        refrigerator.status = status || refrigerator.status;
+        refrigerator.retrieveDate = retrieveDate || refrigerator.retrieveDate;
+        refrigerator.retrieveBy = retrieveBy || refrigerator.retrieveBy;
+        refrigerator.repairedDate = repairedDate || refrigerator.repairedDate;
+        refrigerator.repairedBy = repairedBy || refrigerator.repairedBy;   
+       
         await refrigerator.save();
 
         logger.info(`Refrigerator updated: ${refrigerator.name} (Serial: ${serialNumber})`);
