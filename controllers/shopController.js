@@ -1,4 +1,4 @@
-const { Shop, Refrigerator } = require("../models");
+const { Shop, Refrigerator, Salesman, SubAgent, Agent } = require("../models");
 const logger = require("../config/logger");
 
 exports.createShop = async (req, res) => {
@@ -22,7 +22,10 @@ exports.getAllShops = async (req, res) => {
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association
-            }],
+            },
+            { model: Salesman },
+            { model: SubAgent },
+            { model: Agent }],
             order: [['updatedAt', 'DESC']], // Sort by updatedAt
         });
         res.json(shops);
