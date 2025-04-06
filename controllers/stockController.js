@@ -56,7 +56,8 @@ exports.createStock = async (req, res) => {
             subAgentId,
             agentId,
             shopId,
-            status: stockEvent === 'stock_in' ? "settled" : "created",
+            status:  "created",
+            // status: stockEvent === 'stock_in' ? "settled" : "created",
             description
         });
 
