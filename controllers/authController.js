@@ -155,6 +155,7 @@ exports.self = async (req, res) => {
             salesId: salesId,
             subAgentId: subAgentId,
             agentId: agentId,
+            levelDesc: user.levelDesc,
         });
     } catch (error) {
         console.error(error);
