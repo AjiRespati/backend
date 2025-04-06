@@ -346,7 +346,7 @@ exports.settlingStock = async (req, res) => {
                 createdBy: req.user.username
             });
 
-        } else {
+        } else  if (stock.agentId) {
 
             // ✅ Store Commission in AgentCommission Table
             await AgentCommission.create({
@@ -360,26 +360,32 @@ exports.settlingStock = async (req, res) => {
 
         }
 
-        // ✅ Store Distributor Commission in DistributorCommission Table
-        await DistributorCommission.create({
-            stockId: id,
-            percentage: distributorPercentage,
-            totalNetPrice,
-            amount: totalDistributorShare,
-            createdBy: req.user.username
-        });
+        if (totalDistributorShare) {
+            // ✅ Store Distributor Commission in DistributorCommission Table
+            await DistributorCommission.create({
+                stockId: id,
+                percentage: distributorPercentage,
+                totalNetPrice,
+                amount: totalDistributorShare,
+                createdBy: req.user.username
+            });            
+        }
 
-        // ✅ Store All Shop Commission in ShopAllCommission Table
-        await ShopAllCommission.create({
-            stockId: id,
-            salesId: stock.salesId,
-            subAgentId: stock.subAgentId,
-            agentId: stock.agentId,
-            percentage: percentageMap["shop"],
-            totalNetPrice,
-            amount: totalShopShare,
-            createdBy: req.user.username
-        });
+
+        if (stock.salesId|| stock.subAgentId||stock.agentId) {
+            // ✅ Store All Shop Commission in ShopAllCommission Table
+            await ShopAllCommission.create({
+                stockId: id,
+                salesId: stock.salesId,
+                subAgentId: stock.subAgentId,
+                agentId: stock.agentId,
+                percentage: percentageMap["shop"],
+                totalNetPrice,
+                amount: totalShopShare,
+                createdBy: req.user.username
+            });
+            
+        }
 
         return res.status(200).json({ message: "Stock status updated successfully", stock });
     } catch (error) {
