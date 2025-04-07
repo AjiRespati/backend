@@ -19,3 +19,16 @@ status freezer flow.
 3. Laporan rusak => "BROKEN" => "SALES"
 
 4. Tidak bisa diperbaiki => "WASTED" => "ADMIN"
+
+SELESAIKAN HALAMAN DETAIL TOKO DAN FREEZER UNTUK Update
+BUKAN SEKEDAR POPUP
+
+
+TODO:
+HARGA DI SALES ADALAH HARGA DIKURANGI KOMISI TOKO
+sesuaikan di semua tempat.
+sudah dilakuakn:
+1. adjustment harga di stock processed.
+
+
+

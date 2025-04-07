@@ -198,6 +198,7 @@ exports.getStockTable = async (req, res) => {
                 p.image AS "image",
                 m.id AS "metricId",
                 m."metricType" AS "metricName",
+                s."totalPrice" AS "basicPrice",
                 SUM(CASE WHEN s."stockEvent" = 'stock_in' THEN s.amount ELSE 0 END) AS "totalStockIn",
                 SUM(CASE WHEN s."stockEvent" = 'stock_out' THEN s.amount ELSE 0 END) AS "totalStockOut",
                 (
@@ -221,7 +222,7 @@ exports.getStockTable = async (req, res) => {
                 (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
                 AND (s."status" = :status)
-            GROUP BY p.id, m.id, p.image
+            GROUP BY p.id, m.id, p.image, s."totalPrice"
             ORDER BY p."name" ASC, "lastStockUpdate" DESC;
         `;
 
