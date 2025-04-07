@@ -22,14 +22,12 @@ exports.createStock = async (req, res) => {
         const latestPrice = await Price.findOne({ where: { metricId }, order: [["createdAt", "DESC"]] });
         if (!latestPrice) return res.status(400).json({ error: "No price available for this metric" });
 
-        // ✅ Fetch percentage values
-        const percentages = await Percentage.findAll();
-        const percentageMap = {};
-        percentages.forEach(p => { percentageMap[p.key] = p.value; });
-
         // ✅ Calculate stock values
         const totalPrice = amount * latestPrice.price;
-        const totalNetPrice = totalPrice * (100 / percentageMap["supplier"]);
+        const totalNetPrice = amount * latestPrice.netPrice;
+        const salesmanPrice = salesId ? amount * latestPrice.salesmanPrice : 0;
+        const subAgentPrice = subAgentId ? amount * latestPrice.subAgentPrice : 0;
+        const agentPrice = agentId ? amount * latestPrice.agentPrice : 0;
 
         let totalDistributorShare = 0;
         let totalSalesShare = null;
@@ -46,6 +44,9 @@ exports.createStock = async (req, res) => {
             updateAmount,
             totalPrice,
             totalNetPrice,
+            salesmanPrice,
+            subAgentPrice,
+            agentPrice,
             totalDistributorShare,
             totalSalesShare,
             totalSubAgentShare,
@@ -56,7 +57,7 @@ exports.createStock = async (req, res) => {
             subAgentId,
             agentId,
             shopId,
-            status:  "created",
+            status: "created",
             // status: stockEvent === 'stock_in' ? "settled" : "created",
             description
         });
@@ -199,6 +200,9 @@ exports.getStockTable = async (req, res) => {
                 m.id AS "metricId",
                 m."metricType" AS "metricName",
                 s."totalPrice" AS "basicPrice",
+                s."agentPrice" AS "agentPrice",
+                s."subAgentPrice" AS "subAgentPrice",
+                s."salesmanPrice" AS "salesmanPrice",
                 SUM(CASE WHEN s."stockEvent" = 'stock_in' THEN s.amount ELSE 0 END) AS "totalStockIn",
                 SUM(CASE WHEN s."stockEvent" = 'stock_out' THEN s.amount ELSE 0 END) AS "totalStockOut",
                 (
@@ -222,7 +226,7 @@ exports.getStockTable = async (req, res) => {
                 (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
                 AND (s."status" = :status)
-            GROUP BY p.id, m.id, p.image, s."totalPrice"
+            GROUP BY p.id, m.id, p.image, s."totalPrice", s."agentPrice", s."subAgentPrice", s."salesmanPrice"
             ORDER BY p."name" ASC, "lastStockUpdate" DESC;
         `;
 
@@ -303,8 +307,10 @@ exports.settlingStock = async (req, res) => {
             totalDistributorShare = 0;
         }
 
-        // ✅ Pastikan apakah shop commission selalu 20% (termasuk dari Agent).
-        totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
+        if (stockEvent === 'stock_out') {
+            // ✅ Pastikan apakah shop commission selalu 20% (termasuk dari Agent).
+            totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
+        }
 
         // if (stockEvent === 'stock_out' && !stock.agentId) {
         //     totalShopShare = totalNetPrice * (percentageMap["shop"] / 100);
@@ -347,7 +353,7 @@ exports.settlingStock = async (req, res) => {
                 createdBy: req.user.username
             });
 
-        } else  if (stock.agentId) {
+        } else if (stock.agentId) {
 
             // ✅ Store Commission in AgentCommission Table
             await AgentCommission.create({
@@ -369,11 +375,11 @@ exports.settlingStock = async (req, res) => {
                 totalNetPrice,
                 amount: totalDistributorShare,
                 createdBy: req.user.username
-            });            
+            });
         }
 
 
-        if (stock.salesId|| stock.subAgentId||stock.agentId) {
+        if (stock.salesId || stock.subAgentId || stock.agentId) {
             // ✅ Store All Shop Commission in ShopAllCommission Table
             await ShopAllCommission.create({
                 stockId: id,
@@ -385,7 +391,7 @@ exports.settlingStock = async (req, res) => {
                 amount: totalShopShare,
                 createdBy: req.user.username
             });
-            
+
         }
 
         return res.status(200).json({ message: "Stock status updated successfully", stock });
@@ -504,10 +510,10 @@ exports.getTableBySalesId = async (req, res) => {
         `;
 
         const stocks = await sequelize.query(query, {
-            replacements: { 
-                salesId, 
-                fromDate: new Date(fromDate), 
-                toDate: new Date(toDate) 
+            replacements: {
+                salesId,
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
             },
             type: sequelize.QueryTypes.SELECT
         });

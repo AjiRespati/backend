@@ -4,6 +4,9 @@ module.exports = (sequelize, DataTypes) => {
         id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
         metricId: { type: DataTypes.UUID, allowNull: false },
         price: { type: DataTypes.FLOAT, allowNull: false },
+        salesmanPrice: { type: DataTypes.FLOAT, allowNull: false },
+        subAgentPrice: { type: DataTypes.FLOAT, allowNull: false },
+        agentPrice: { type: DataTypes.FLOAT, allowNull: false },
         netPrice: { type: DataTypes.FLOAT, allowNull: false },
         updateBy: { type: DataTypes.STRING }
     }, { timestamps: true });

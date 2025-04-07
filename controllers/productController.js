@@ -7,6 +7,18 @@ const path = require("path");
 exports.createProduct = async (req, res) => {
     const { name, description, price, metricType, updateBy } = req.body;
 
+
+    // ✅ Fetch percentage values
+    const percentages = await Percentage.findAll();
+    const percentageMap = {};
+    percentages.forEach(p => { percentageMap[p.key] = p.value; });
+
+    // ✅ Calculate stock values
+    const netPrice = price * (100 / percentageMap["supplier"]);
+    const salesmanPrice = netPrice * ((100 - percentageMap["shop"]) / 100);
+    const subAgentPrice = netPrice * ((100 - percentageMap["shop"]) / 100); // bisa diganti
+    const agentPrice = netPrice * ((100 - percentageMap["shop"] - percentageMap["agent"]) / 100);
+
     try {
         // ✅ Fetch Supplier Percentage from Percentages Table
         const supplierPercentage = await Percentage.findOne({ where: { key: "supplier" } });
@@ -34,10 +46,8 @@ exports.createProduct = async (req, res) => {
 
         // ✅ Create Price with netPrice
         await Price.create({
-            metricId: metric.id,
-            price,
-            netPrice,
-            updateBy: req.user.username
+            metricId: metric.id, price, netPrice, salesmanPrice,
+            subAgentPrice, agentPrice, updateBy: req.user.username
         });
 
         res.status(200).json(product);
@@ -106,27 +116,27 @@ exports.getAllProducts = async (req, res) => {
 
         let realResult = [];
         let productMap = new Map();
-        
+
         results.forEach((item) => {
             console.log(item.productId);
-          if (productMap.has(item.productId)) {
-            let existingItem = productMap.get(item.productId);
-            existingItem.totalStock += item.totalStock;
-          } else {
-            productMap.set(item.productId, { ...item });
-          }
+            if (productMap.has(item.productId)) {
+                let existingItem = productMap.get(item.productId);
+                existingItem.totalStock += item.totalStock;
+            } else {
+                productMap.set(item.productId, { ...item });
+            }
         });
-        
+
         productMap.forEach((item) => {
-          realResult.push({
-            productId: item.productId,
-            productName: item.productName,
-            image: item.image,
-            description: item.description,
-            totalStock: item.totalStock,
-            last_stock_in: item.last_stock_in,
-            last_stock_out: item.last_stock_out,
-          });
+            realResult.push({
+                productId: item.productId,
+                productName: item.productName,
+                image: item.image,
+                description: item.description,
+                totalStock: item.totalStock,
+                last_stock_in: item.last_stock_in,
+                last_stock_out: item.last_stock_out,
+            });
         });
 
         res.json(realResult);
@@ -156,6 +166,9 @@ exports.getProductById = async (req, res) => {
                 ) AS "totalStock",
                 pr.price,
                 pr."netPrice",
+                pr."salesmanPrice",
+                pr."subAgentPrice",
+                pr."agentPrice",
                 (
                     SELECT s."createdAt"
                     FROM "Stocks" s
@@ -177,6 +190,9 @@ exports.getProductById = async (req, res) => {
                     "metricId",
                     price,
                     "netPrice",
+                    "salesmanPrice",
+                    "subAgentPrice",
+                    "agentPrice",
                     "createdAt"
                 FROM "Prices"
                 WHERE "createdAt" IN (
@@ -187,7 +203,7 @@ exports.getProductById = async (req, res) => {
             ) pr ON pr."metricId" = m.id
             WHERE p.id = :productId
             GROUP BY 
-                p.id, m.id, pr.price, pr."netPrice"
+                p.id, m.id, pr.price, pr."netPrice", pr."salesmanPrice", pr."subAgentPrice", pr."agentPrice"
             ORDER BY p."createdAt" DESC;
         `;
 

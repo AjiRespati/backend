@@ -27,8 +27,16 @@ BUKAN SEKEDAR POPUP
 TODO:
 HARGA DI SALES ADALAH HARGA DIKURANGI KOMISI TOKO
 sesuaikan di semua tempat.
-sudah dilakuakn:
+sudah dilakukan:
 1. adjustment harga di stock processed.
+
+
+
+TODO: Update Price adalah create new price dari metric terkait.
+TODO: PRICE LOGIC
+1. Database terkait adalah: Prices, Metrics, Percentages, 
+2. Perubahan harga di Metric, buat Price baru dengan metricId yang sama,
+3. Perubahan Percentages, buat Price baru untuk seluruh metric
 
 
 

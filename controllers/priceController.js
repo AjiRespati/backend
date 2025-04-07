@@ -1,10 +1,25 @@
-const { Price } = require("../models");
+const { Price, Percentage } = require("../models");
 const logger = require("../config/logger");
 
 exports.createPrice = async (req, res) => {
     try {
-        const { metricId, price, netPrice, updateBy } = req.body;
-        const newPrice = await Price.create({ metricId, price, netPrice, updateBy: req.user.username });
+        const { metricId, price } = req.body;
+
+        // ✅ Fetch percentage values
+        const percentages = await Percentage.findAll();
+        const percentageMap = {};
+        percentages.forEach(p => { percentageMap[p.key] = p.value; });
+
+        // ✅ Calculate stock values
+        const netPrice = price * (100 / percentageMap["supplier"]);
+        const salesmanPrice = netPrice * ((100 - percentageMap["shop"]) / 100);
+        const subAgentPrice = netPrice * ((100 - percentageMap["shop"]) / 100); // bisa diganti
+        const agentPrice = netPrice * ((100 - percentageMap["shop"] - percentageMap["agent"]) / 100);
+
+        const newPrice = await Price.create({
+            metricId, price, netPrice, salesmanPrice,
+            subAgentPrice, agentPrice, updateBy: req.user.username
+        });
 
         logger.info(`Price added for metric: ${metricId}`);
         res.status(200).json(newPrice);
