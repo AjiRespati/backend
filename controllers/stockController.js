@@ -145,6 +145,9 @@ exports.getStockHistory = async (req, res) => {
                 s."updateAmount",
                 s."totalPrice",
                 s."totalNetPrice",
+                s."agentPrice",
+                s."subAgentPrice",
+                s."salesmanPrice",
                 s."totalDistributorShare",
                 s."totalSalesShare",
                 s."totalSubAgentShare",
@@ -189,7 +192,13 @@ exports.getStockHistory = async (req, res) => {
 
 
 exports.getStockTable = async (req, res) => {
-    const { fromDate, toDate, status } = req.query;
+    const { fromDate, toDate, status, salesId, subAgentId, agentId } = req.query;
+
+    // Ensure that optional parameters default to null if they are missing (undefined)
+    // This ensures the replacements object will always have these keys defined.
+    const reqSalesId = salesId || null;
+    const reqSubAgentId = subAgentId || null;
+    const reqAgentId = agentId || null;
 
     try {
         const query = `
@@ -199,10 +208,10 @@ exports.getStockTable = async (req, res) => {
                 p.image AS "image",
                 m.id AS "metricId",
                 m."metricType" AS "metricName",
-                s."totalPrice" AS "basicPrice",
-                s."agentPrice" AS "agentPrice",
-                s."subAgentPrice" AS "subAgentPrice",
-                s."salesmanPrice" AS "salesmanPrice",
+            --    s."totalPrice" AS "basicPrice",
+            --    s."agentPrice" AS "agentPrice",
+            --    s."subAgentPrice" AS "subAgentPrice",
+            --    s."salesmanPrice" AS "salesmanPrice",
                 SUM(CASE WHEN s."stockEvent" = 'stock_in' THEN s.amount ELSE 0 END) AS "totalStockIn",
                 SUM(CASE WHEN s."stockEvent" = 'stock_out' THEN s.amount ELSE 0 END) AS "totalStockOut",
                 (
@@ -225,13 +234,89 @@ exports.getStockTable = async (req, res) => {
             WHERE 
                 (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
+                AND (:salesId IS NULL OR s."salesId" = :salesId)
+                AND (:subAgentId IS NULL OR s."subAgentId" = :subAgentId)
+                AND (:agentId IS NULL OR s."agentId" = :agentId)
                 AND (s."status" = :status)
-            GROUP BY p.id, m.id, p.image, s."totalPrice", s."agentPrice", s."subAgentPrice", s."salesmanPrice"
+            GROUP BY p.id, m.id, p.image -- , s."totalPrice", s."agentPrice", s."subAgentPrice", s."salesmanPrice"
             ORDER BY p."name" ASC, "lastStockUpdate" DESC;
         `;
 
         const [results] = await sequelize.query(query, {
-            replacements: { fromDate, toDate, status }
+            replacements: {
+                fromDate,
+                toDate,
+                status,
+                salesId: reqSalesId,
+                subAgentId: reqSubAgentId,
+                agentId: reqAgentId
+            }
+        });
+
+        res.json(results);
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+exports.getStockClientTable = async (req, res) => {
+    const { fromDate, toDate, status, salesId, subAgentId, agentId } = req.query;
+
+    // Ensure that optional parameters default to null if they are missing (undefined)
+    // This ensures the replacements object will always have these keys defined.
+    const reqSalesId = salesId || null;
+    const reqSubAgentId = subAgentId || null;
+    const reqAgentId = agentId || null;
+
+    try {        
+        const query = `
+            SELECT 
+                s.id AS "stockId",
+                p."name" AS "productName",
+                p.image AS "image",
+                m."metricType" AS "measurement",
+                s."stockEvent",
+                s."amount",
+                s."updateAmount",
+                s."totalPrice",
+                s."totalNetPrice",
+                s."agentPrice",
+                s."subAgentPrice",
+                s."salesmanPrice",
+                s."totalDistributorShare",
+                s."totalSalesShare",
+                s."totalSubAgentShare",
+                s."totalAgentShare",
+                s."totalShopShare",
+                s."status",
+                s."description",
+                s."createdBy",
+                sh."name" AS "shopName"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            WHERE 
+                s."status" = :status
+                AND (:fromDate IS NULL OR s."createdAt" >= :fromDate)
+                AND (:toDate IS NULL OR s."createdAt" <= :toDate)
+                AND (:salesId IS NULL OR s."salesId" = :salesId)
+                AND (:subAgentId IS NULL OR s."subAgentId" = :subAgentId)
+                AND (:agentId IS NULL OR s."agentId" = :agentId)
+            ORDER BY s."createdAt" DESC;
+        `;
+
+        const [results] = await sequelize.query(query, {
+            replacements: {
+                fromDate,
+                toDate,
+                status,
+                salesId: reqSalesId,
+                subAgentId: reqSubAgentId,
+                agentId: reqAgentId
+            }
         });
 
         res.json(results);
