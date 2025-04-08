@@ -6,5 +6,5 @@ const router = express.Router();
 
 router.post("/", authMiddleware, createSubAgent);
 router.get("/", authMiddleware, subagentLists);
-router.put("/", authMiddleware, updateSubagent);
+router.put("/:id", authMiddleware, updateSubagent);
 module.exports = router;

@@ -22,8 +22,12 @@ exports.createAgent = async (req, res) => {
 };
 
 exports.agentList = async (req, res) => {
+    const { status } = req.query;
+
     try {
-        const agents = await Agent.findAll();
+        const agents = status
+            ? await Agent.findAll({ where: { status } })
+            : await Agent.findAll();
         res.json(agents);
     } catch (error) {
         logger.error(`Fetching agents error: ${error.stack}`);

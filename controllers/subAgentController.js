@@ -15,8 +15,12 @@ exports.createSubAgent = async (req, res) => {
 };
 
 exports.subagentLists = async (req, res) => {
+    const { status } = req.query;
+
     try {
-        const subagents = await SubAgent.findAll();
+        const subagents = status
+            ? await SubAgent.findAll({ where: { status } })
+            : await SubAgent.findAll();
         res.json(subagents);
     } catch (error) {
         logger.error(`Fetching subagents error: ${error.stack}`);

@@ -293,10 +293,21 @@ exports.getStockClientTable = async (req, res) => {
                 s."status",
                 s."description",
                 s."createdBy",
+                COALESCE(sa.name, ag.name, sm.name, sh.name, 'N/A') AS "relatedEntity",
+                CASE 
+                    WHEN s."salesId" IS NOT NULL THEN 'Salesman'
+                    WHEN s."subAgentId" IS NOT NULL THEN 'SubAgent'
+                    WHEN s."agentId" IS NOT NULL THEN 'Agent'
+                    WHEN s."shopId" IS NOT NULL THEN 'Shop'
+                    ELSE 'Unknown'
+                END AS "entityType",
                 sh."name" AS "shopName"
             FROM "Stocks" s
             LEFT JOIN "Metrics" m ON s."metricId" = m.id
             LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Salesmans" sm ON s."salesId" = sm.id
+            LEFT JOIN "SubAgents" sa ON s."subAgentId" = sa.id
+            LEFT JOIN "Agents" ag ON s."agentId" = ag.id
             LEFT JOIN "Shops" sh ON s."shopId" = sh.id
             WHERE 
                 s."status" = :status

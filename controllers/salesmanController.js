@@ -15,8 +15,11 @@ exports.createSalesman = async (req, res) => {
 };
 
 exports.salesmanList = async (req, res) => {
+    const { status } = req.query;
     try {
-        const salesmen = await Salesman.findAll();
+        const salesmen = status
+            ? await Salesman.findAll({ where: { status } })
+            : await Salesman.findAll();
         res.json(salesmen);
     } catch (error) {
         logger.error(`Fetching salesmen by sub-agent error: ${error.stack}`);
