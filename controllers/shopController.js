@@ -17,22 +17,51 @@ exports.createShop = async (req, res) => {
 };
 
 exports.getAllShops = async (req, res) => {
+    const { fromDate, toDate, status, salesId, subAgentId, agentId, stockEvent, shopId } = req.query;
     try {
+        // --- Define the attributes you want from the Refrigerator model ---
+        // --- Replace these with the actual attribute names you need ---
+        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status']; // Example attributes
+
         const shops = await Shop.findAll({
-            include: [{
-                model: Refrigerator,
-                //   as: 'Refrigerators', // Optional: Provide an alias for the association
-            },
-            { model: Salesman },
-            { model: SubAgent },
-            { model: Agent }],
+            include: [
+                {
+                    model: Refrigerator,
+                    // Use the 'attributes' option to select specific fields
+                    attributes: desiredRefrigeratorAttributes,
+                    // You might need 'required: false' if a Shop might not have any Refrigerators
+                    // and you still want to see the Shop in the results.
+                    // required: false, // This makes it a LEFT JOIN instead of INNER JOIN
+                    required: false,
+                },
+                { model: Salesman, },
+                { model: SubAgent },
+                { model: Agent }
+            ],
             order: [['updatedAt', 'DESC']], // Sort by updatedAt
         });
         res.json(shops);
     } catch (error) {
-        logger.error(`Fetching shops error: ${error}`);
+        logger.error(`Workspaceing shops error: ${error}`);
         res.status(500).json({ error: "Failed to retrieve shops" });
     }
+
+    // try {
+    //     const shops = await Shop.findAll({
+    //         include: [{
+    //             model: Refrigerator,
+    //             //   as: 'Refrigerators', // Optional: Provide an alias for the association
+    //         },
+    //         { model: Salesman },
+    //         { model: SubAgent },
+    //         { model: Agent }],
+    //         order: [['updatedAt', 'DESC']], // Sort by updatedAt
+    //     });
+    //     res.json(shops);
+    // } catch (error) {
+    //     logger.error(`Fetching shops error: ${error}`);
+    //     res.status(500).json({ error: "Failed to retrieve shops" });
+    // }
 };
 
 

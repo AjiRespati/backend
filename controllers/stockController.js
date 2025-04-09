@@ -262,13 +262,14 @@ exports.getStockTable = async (req, res) => {
 
 
 exports.getStockClientTable = async (req, res) => {
-    const { fromDate, toDate, status, salesId, subAgentId, agentId, stockEvent } = req.query;
+    const { fromDate, toDate, status, salesId, subAgentId, agentId, stockEvent, shopId } = req.query;
 
     // Ensure that optional parameters default to null if they are missing (undefined)
     // This ensures the replacements object will always have these keys defined.
     const reqSalesId = salesId || null;
     const reqSubAgentId = subAgentId || null;
     const reqAgentId = agentId || null;
+    const reqShopId = shopId || null;
     const reqStockEvent = stockEvent || null;
 
     try {
@@ -318,6 +319,7 @@ exports.getStockClientTable = async (req, res) => {
                 AND (:salesId IS NULL OR s."salesId" = :salesId)
                 AND (:subAgentId IS NULL OR s."subAgentId" = :subAgentId)
                 AND (:agentId IS NULL OR s."agentId" = :agentId)
+                AND (:shopId IS NULL OR s."shopId" = :shopId)
                 AND (:stockEvent IS NULL OR s."stockEvent" = :stockEvent)
             ORDER BY s."createdAt" DESC;
         `;
@@ -330,6 +332,7 @@ exports.getStockClientTable = async (req, res) => {
                 salesId: reqSalesId,
                 subAgentId: reqSubAgentId,
                 agentId: reqAgentId,
+                shopId: reqShopId,
                 stockEvent: reqStockEvent
             }
         });
