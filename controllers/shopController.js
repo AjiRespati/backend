@@ -21,7 +21,7 @@ exports.getAllShops = async (req, res) => {
     try {
         // --- Define the attributes you want from the Refrigerator model ---
         // --- Replace these with the actual attribute names you need ---
-        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status']; // Example attributes
+        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description'];
 
         const shops = await Shop.findAll({
             include: [
@@ -69,11 +69,13 @@ exports.getAllShopsBySales = async (req, res) => {
     try {
         const { salesId } = req.params;
         let shops = [];
+        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description'];
         const salesmanShops = await Shop.findAll({
             where: { salesId },
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association
+                attributes: desiredRefrigeratorAttributes,
             }],
         });
         const subAgentShops = await Shop.findAll({
