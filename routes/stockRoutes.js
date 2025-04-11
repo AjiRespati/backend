@@ -2,7 +2,8 @@ const express = require("express");
 const { createStock, stockListByProduct, stockListBySales,
     stockListBySubAgent, stockListByAgent, getStockTable, getStockClientTable,
     getStockHistory, settlingStock, cancelingStock, getStockResume,
-    getTableBySalesId } = require("../controllers/stockController");
+    getTableBySalesId, createStockBatch, getTableByShopId
+} = require("../controllers/stockController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -19,5 +20,7 @@ router.put("/settled", authMiddleware, settlingStock);
 router.put("/canceled", authMiddleware, cancelingStock);
 router.post("/table/resume", authMiddleware, getStockResume);
 router.post("/table/salesman", authMiddleware, getTableBySalesId);
+router.post("/table/shop", authMiddleware, getTableByShopId);
+router.post("/batch", authMiddleware, createStockBatch);
 
 module.exports = router;

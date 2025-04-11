@@ -40,3 +40,6 @@ TODO: PRICE LOGIC
 
 
 CEK HARGA sales agent dll KETIKA SETTLE
+
+TODO: Resume pemesanan di database, lakukan request di backend proses.
+TODO: Halaman Dashboard, komisi per client, total untuk admin, per bulan berjalan.

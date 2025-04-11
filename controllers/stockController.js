@@ -6,6 +6,142 @@ const { Stock, Metric, Product, Price, Percentage, SalesmanCommission, SubAgentC
     AgentCommission, DistributorCommission, ShopAllCommission } = require("../models");
 const logger = require("../config/logger");
 
+
+
+// --- Helper Function for Single Stock Creation Logic ---
+// Extracts the core logic from createStock, making it reusable and testable
+// Takes transaction item data and the database transaction object
+async function _internalCreateSingleStock(itemData, transaction, username) {
+    const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, status, description } = itemData;
+
+    let initialAmount = null;
+    // Find last settled stock WITHIN the same transaction for consistency
+    const lastStock = await Stock.findOne({
+        where: { metricId, status: "settled" }, // Or adjust status logic if needed
+        order: [["createdAt", "DESC"]],
+        transaction // Use the transaction
+    });
+    if (lastStock) {
+        // Logic might need refinement depending on how stock_in/out affect each other within a batch
+        // For simplicity assuming stock_in updates based on last settled state before the batch
+        initialAmount = lastStock.updateAmount; // Assume stock_in always uses the last settled amount
+    }
+
+    // Determine updateAmount based on current item's event type
+    const updateAmount = stockEvent === 'stock_in'
+        ? (initialAmount !== null ? initialAmount : 0) + amount // Handle case where initialAmount might be null
+        : (initialAmount !== null ? initialAmount : 0) - amount; // Assuming stock_out decreases
+
+
+    // Fetch the latest price for this metric WITHIN the same transaction
+    const latestPrice = await Price.findOne({
+        where: { metricId },
+        order: [["createdAt", "DESC"]],
+        transaction // Use the transaction
+    });
+
+    if (!latestPrice) {
+        // If price is missing, throw an error to rollback the whole transaction
+        throw new Error(`No price available for metricId ${metricId}`);
+    }
+
+    // Calculate stock values based on the current item
+    const totalPrice = amount * latestPrice.price;
+    const totalNetPrice = amount * latestPrice.netPrice;
+    const salesmanPrice = salesId ? amount * latestPrice.salesmanPrice : 0;
+    const subAgentPrice = subAgentId ? amount * latestPrice.subAgentPrice : 0;
+    const agentPrice = agentId ? amount * latestPrice.agentPrice : 0;
+
+    // Placeholder values - commissions might need separate calculation/logic
+    let totalDistributorShare = 0;
+    let totalSalesShare = null;
+    let totalSubAgentShare = null;
+    let totalAgentShare = null;
+    let totalShopShare = null;
+
+    // Create Stock Entry WITHIN the same transaction
+    const stock = await Stock.create({
+        metricId,
+        stockEvent,
+        initialAmount,
+        amount,
+        updateAmount,
+        totalPrice,
+        totalNetPrice,
+        salesmanPrice,
+        subAgentPrice,
+        agentPrice,
+        totalDistributorShare,
+        totalSalesShare,
+        totalSubAgentShare,
+        totalAgentShare,
+        totalShopShare,
+        createdBy: username, // Pass username from request
+        salesId,
+        subAgentId,
+        agentId,
+        shopId,
+        status: "created", // Or apply your status logic ('settled'?)
+        description
+    }, { transaction }); // Pass the transaction object
+
+    return stock; // Return the created stock record
+}
+
+
+// --- New Batch Controller Function ---
+exports.createStockBatch = async (req, res) => {
+    // Start a Sequelize managed transaction
+    const transaction = await sequelize.transaction();
+    try {
+        // Expect an array of transactions in the request body, e.g., { transactions: [...] }
+        const { transactions } = req.body;
+
+        if (!Array.isArray(transactions) || transactions.length === 0) {
+            await transaction.rollback(); // Rollback before sending error
+            return res.status(400).json({ error: "Request body must contain a non-empty 'transactions' array." });
+        }
+
+        const createdStocks = [];
+        const errors = [];
+
+        // Use Promise.all for concurrent processing within the transaction (optional, can use sequential for...of loop too)
+        await Promise.all(transactions.map(async (item) => {
+            // Call the internal helper for each item
+            const newStock = await _internalCreateSingleStock(item, transaction, req.user.username);
+            createdStocks.push(newStock);
+        }));
+
+        // If using sequential loop:
+        // for (const item of transactions) {
+        //     try {
+        //         const newStock = await _internalCreateSingleStock(item, transaction, req.user.username);
+        //         createdStocks.push(newStock);
+        //     } catch (itemError) {
+        //          // Log specific item error - the main catch block will handle rollback
+        //         logger.error(`Error processing item ${item.metricId}: ${itemError.message}`);
+        //         // Re-throw the error to ensure the transaction rolls back
+        //          throw itemError;
+        //     }
+        // }
+
+
+        // If all items were processed without error, commit the transaction
+        await transaction.commit();
+        logger.info(`${createdStocks.length} stock entries created successfully in batch.`);
+        res.status(201).json({ message: "Batch stock creation successful", data: createdStocks });
+
+    } catch (error) {
+        // If any error occurred during the process (incl. _internalCreateSingleStock), rollback the transaction
+        await transaction.rollback();
+        logger.error(`Batch stock creation failed: ${error.stack}`);
+        // Provide a more specific error message if possible (e.g., from the caught error)
+        res.status(500).json({ error: "Batch stock creation failed", details: error.message });
+    }
+};
+
+
+
 exports.createStock = async (req, res) => {
     try {
         const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, status, description } = req.body;
@@ -532,46 +668,70 @@ exports.cancelingStock = async (req, res) => {
 
 
 exports.getStockResume = async (req, res) => {
-    const { fromDate, toDate, salesId } = req.body;
+    const { fromDate, toDate, salesId, subAgentId, agentId, shopId } = req.body;
 
     try {
-        const whereClause = {
-            salesId,
+        let whereClause = {
             createdAt: {
                 [Op.between]: [new Date(fromDate), new Date(toDate)]
             }
         };
+        if (salesId) {
+            whereClause['salesId'] = salesId;
+        }
+        if (subAgentId) {
+            whereClause['subAgentId'] = subAgentId;
+        }
+        if (agentId) {
+            whereClause['agentId'] = agentId;
+        }
+        if (shopId) {
+            whereClause['shopId'] = shopId;
+        }
+
 
         const stockResume = await Stock.findAll({
             where: whereClause,
             attributes: [
                 [sequelize.fn('SUM', sequelize.col('amount')), 'totalAmount'],
+                [sequelize.fn('SUM', sequelize.col('salesmanPrice')), 'totalNetSalesman'],
+                [sequelize.fn('SUM', sequelize.col('subAgentPrice')), 'totalNetSubAgent'],
+                [sequelize.fn('SUM', sequelize.col('agentPrice')), 'totalNetAgent'],
+                [sequelize.fn('SUM', sequelize.col('totalSalesShare')), 'totalSalesmanCommission'],
+                [sequelize.fn('SUM', sequelize.col('totalSubAgentShare')), 'totalSubAgentCommission'],
+                [sequelize.fn('SUM', sequelize.col('totalAgentShare')), 'totalAgentCommission'],
+                [sequelize.fn('SUM', sequelize.col('totalShopShare')), 'totalShopAllCommission'],
                 [sequelize.fn('SUM', sequelize.col('totalNetPrice')), 'totalNetPriceSum'],
             ],
             raw: true
         });
 
-        const salesmanCommissions = await SalesmanCommission.findAll({
-            where: whereClause,
-            attributes: [
-                [sequelize.fn('SUM', sequelize.col('amount')), 'totalSalesmanCommission']
-            ],
-            raw: true
-        });
+        // const salesmanCommissions = await SalesmanCommission.findAll({
+        //     where: whereClause,
+        //     attributes: [
+        //         [sequelize.fn('SUM', sequelize.col('amount')), 'totalSalesmanCommission']
+        //     ],
+        //     raw: true
+        // });
 
-        const shopAllCommissions = await ShopAllCommission.findAll({
-            where: whereClause,
-            attributes: [
-                [sequelize.fn('SUM', sequelize.col('amount')), 'totalShopAllCommission']
-            ],
-            raw: true
-        });
+        // const shopAllCommissions = await ShopAllCommission.findAll({
+        //     where: whereClause,
+        //     attributes: [
+        //         [sequelize.fn('SUM', sequelize.col('amount')), 'totalShopAllCommission']
+        //     ],
+        //     raw: true
+        // });
 
         return res.status(200).json({
             totalAmount: stockResume[0]?.totalAmount || 0,
             totalNetPriceSum: stockResume[0]?.totalNetPriceSum || 0,
-            totalSalesmanCommission: salesmanCommissions[0]?.totalSalesmanCommission || 0,
-            totalShopAllCommission: shopAllCommissions[0]?.totalShopAllCommission || 0
+            totalNetSalesmanSum: stockResume[0]?.totalNetSalesman || 0,
+            totalNetSubAgentSum: stockResume[0]?.totalNetSubAgent || 0,
+            totalNetAgentSum: stockResume[0]?.totalNetAgent || 0,
+            totalSalesmanCommission: stockResume[0]?.totalSalesmanCommission || 0,
+            totalSubAgentCommission: stockResume[0]?.totalSubAgentCommission || 0,
+            totalAgentCommission: stockResume[0]?.totalAgentCommission || 0,
+            totalShopAllCommission: stockResume[0]?.totalShopAllCommission || 0
         });
 
     } catch (error) {
@@ -589,24 +749,178 @@ exports.getTableBySalesId = async (req, res) => {
             SELECT 
                 s.id,
                 s.amount,
-                s."totalNetPrice",
+                s."salesmanPrice",
+                s."totalSalesShare",
+                -- s."totalNetPrice",
                 s.status,
                 s."updatedAt",
                 p.name AS "productName",
                 m."metricType",
-                pr."netPrice",
-                sc.amount AS "salesmanCommission",
-                sac.amount AS "shopAllCommission"
+                sh."name" AS "shopName"
+                -- pr."netPrice",
+                -- sc.amount AS "salesmanCommission",
+                -- sac.amount AS "shopAllCommission"
             FROM "Stocks" s
             LEFT JOIN "Metrics" m ON s."metricId" = m.id
             LEFT JOIN "Products" p ON m."productId" = p.id
-            LEFT JOIN (
-                SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
-                FROM "Prices" 
-                ORDER BY "metricId", "createdAt" DESC
-            ) pr ON m.id = pr."metricId"
-            LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
-            LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            --  LEFT JOIN (
+            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
+            --      FROM "Prices" 
+            --      ORDER BY "metricId", "createdAt" DESC
+            --  ) pr ON m.id = pr."metricId"
+            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
+            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
+            WHERE s."salesId" = :salesId
+            AND s."createdAt" BETWEEN :fromDate AND :toDate
+            ORDER BY s."createdAt" DESC
+        `;
+
+        const stocks = await sequelize.query(query, {
+            replacements: {
+                salesId,
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
+            },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(stocks);
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+
+exports.getTableBySalesId = async (req, res) => {
+    const { fromDate, toDate, salesId } = req.body;
+
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.amount,
+                s."salesmanPrice",
+                s."totalSalesShare",
+                -- s."totalNetPrice",
+                s.status,
+                s."updatedAt",
+                p.name AS "productName",
+                m."metricType",
+                sh."name" AS "shopName"
+                -- pr."netPrice",
+                -- sc.amount AS "salesmanCommission",
+                -- sac.amount AS "shopAllCommission"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            --  LEFT JOIN (
+            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
+            --      FROM "Prices" 
+            --      ORDER BY "metricId", "createdAt" DESC
+            --  ) pr ON m.id = pr."metricId"
+            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
+            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
+            WHERE s."salesId" = :salesId
+            AND s."createdAt" BETWEEN :fromDate AND :toDate
+            ORDER BY s."createdAt" DESC
+        `;
+
+        const stocks = await sequelize.query(query, {
+            replacements: {
+                salesId,
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
+            },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(stocks);
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+
+exports.getTableByShopId = async (req, res) => {
+    const { fromDate, toDate, shopId } = req.body;
+
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.amount,
+                s."totalNetPrice",
+                s."totalShopShare",
+                s.status,
+                s."updatedAt",
+                p.name AS "productName",
+                m."metricType",
+                sh."name" AS "shopName"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            WHERE s."shopId" = :shopId
+            AND s."createdAt" BETWEEN :fromDate AND :toDate
+            ORDER BY s."createdAt" DESC
+        `;
+
+        const stocks = await sequelize.query(query, {
+            replacements: {
+                shopId,
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
+            },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(stocks);
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+exports.getTableBySalesIdxxx = async (req, res) => {
+    const { fromDate, toDate, salesId } = req.body;
+
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.amount,
+                s."salesmanPrice",
+                s."totalSalesShare",
+                -- s."totalNetPrice",
+                s.status,
+                s."updatedAt",
+                p.name AS "productName",
+                m."metricType",
+                sh."name" AS "shopName"
+                -- pr."netPrice",
+                -- sc.amount AS "salesmanCommission",
+                -- sac.amount AS "shopAllCommission"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            --  LEFT JOIN (
+            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
+            --      FROM "Prices" 
+            --      ORDER BY "metricId", "createdAt" DESC
+            --  ) pr ON m.id = pr."metricId"
+            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
+            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
             WHERE s."salesId" = :salesId
             AND s."createdAt" BETWEEN :fromDate AND :toDate
             ORDER BY s."createdAt" DESC
