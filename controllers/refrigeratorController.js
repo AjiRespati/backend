@@ -57,3 +57,22 @@ exports.updateRefrigerator = async (req, res) => {
         res.status(500).json({ error: "Failed to update refrigerator" });
     }
 };
+
+
+exports.returnRefrigerator = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const refrigerator = await Refrigerator.findByPk(id);
+        if (!refrigerator) return res.status(404).json({ error: "Refrigerator not found" });
+
+        refrigerator.shopId = null;
+       
+        await refrigerator.save();
+
+        logger.info(`Refrigerator return : ${refrigerator.name} (Serial: ${refrigerator.serialNumber})`);
+        res.json(refrigerator);
+    } catch (error) {
+        logger.error(`Updating refrigerator error: ${error.stack}`);
+        res.status(500).json({ error: "Failed to update refrigerator" });
+    }
+};
