@@ -31,12 +31,12 @@ exports.getAllRefrigerators = async (req, res) => {
 exports.updateRefrigerator = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, capacity, serialNumber, coordinates, shopId, status, retrieveDate, retrieveBy, repairedDate, repairedBy } = req.body;
+        const { name, capacity, serialNumber, coordinates, shopId, status, retrieveDate, retrieveBy,
+            repairedDate, repairedBy, description } = req.body;
 
         const refrigerator = await Refrigerator.findByPk(id);
         if (!refrigerator) return res.status(404).json({ error: "Refrigerator not found" });
 
-        // Object.assign(refrigerator, { name, capacity, serialNumber, coordinates, shopId, status, retrieveDate, retrieveBy, repairedDate, repairedBy });
         refrigerator.name = name || refrigerator.name;
         refrigerator.capacity = capacity || refrigerator.capacity;
         refrigerator.serialNumber = serialNumber || refrigerator.serialNumber;
@@ -46,8 +46,9 @@ exports.updateRefrigerator = async (req, res) => {
         refrigerator.retrieveDate = retrieveDate || refrigerator.retrieveDate;
         refrigerator.retrieveBy = retrieveBy || refrigerator.retrieveBy;
         refrigerator.repairedDate = repairedDate || refrigerator.repairedDate;
-        refrigerator.repairedBy = repairedBy || refrigerator.repairedBy;   
-       
+        refrigerator.repairedBy = repairedBy || refrigerator.repairedBy;
+        refrigerator.description = description || refrigerator.description;
+
         await refrigerator.save();
 
         logger.info(`Refrigerator updated: ${refrigerator.name} (Serial: ${serialNumber})`);
@@ -66,7 +67,7 @@ exports.returnRefrigerator = async (req, res) => {
         if (!refrigerator) return res.status(404).json({ error: "Refrigerator not found" });
 
         refrigerator.shopId = null;
-       
+
         await refrigerator.save();
 
         logger.info(`Refrigerator return : ${refrigerator.name} (Serial: ${refrigerator.serialNumber})`);

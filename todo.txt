@@ -2,7 +2,7 @@ Salesman Menu:
 1. Kondisi stock
 2. Pesan Barang
 3. Komisi
-4. Shop/Freezer
+4. Shop/Kondisi Freezer
 5. Setting
 
 

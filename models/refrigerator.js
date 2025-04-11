@@ -13,7 +13,8 @@ module.exports = (sequelize, DataTypes) => {
         retrieveBy: { type: DataTypes.STRING, allowNull: true },
         repairingStart: { type: DataTypes.DATE, allowNull: true },
         repairingFinish: { type: DataTypes.DATE, allowNull: true },
-        repairedBy: { type: DataTypes.STRING, allowNull: true }
+        repairedBy: { type: DataTypes.STRING, allowNull: true },
+        description: { type: DataTypes.TEXT }
     }, { timestamps: true });
 
     Refrigerator.associate = (models) => {
