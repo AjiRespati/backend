@@ -62,6 +62,7 @@ async function _internalCreateSingleStock(itemData, transaction, username, batch
 exports.createStockBatch = async (req, res) => {
     const { transactions } = req.body;
     const username = req.user.username;
+    const userId = req.user.id;
     let batchRecord = null;
 
     if (!Array.isArray(transactions) || transactions.length === 0) {
@@ -75,6 +76,7 @@ exports.createStockBatch = async (req, res) => {
             status: 'processing',
             itemCount: transactions.length,
             createdBy: username,
+            creatorId: userId
         });
     } catch (batchError) {
         logger.error(`Failed to create initial StockBatch record: ${batchError.stack}`);

@@ -30,6 +30,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
+        creatorId: { // User who initiated the batch
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
         errorMessage: { // Store details if the batch failed
             type: DataTypes.TEXT,
             allowNull: true,
