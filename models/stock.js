@@ -24,8 +24,20 @@ module.exports = (sequelize, DataTypes) => {
         subAgentId: { type: DataTypes.UUID, allowNull: true },
         agentId: { type: DataTypes.UUID, allowNull: true },
         shopId: { type: DataTypes.UUID, allowNull: true },
+        // --- Add this Foreign Key field ---
+        stockBatchId: {
+            type: DataTypes.UUID,
+            allowNull: true, // Or false if all stocks must belong to a batch
+            references: {
+                model: 'StockBatches', // Table name defined by StockBatch model
+                key: 'id',
+            },
+            onUpdate: 'CASCADE',
+            onDelete: 'SET NULL', // Or RESTRICT / CASCADE
+        },
+        // --- End of addition ---
         status: { type: DataTypes.ENUM("created", "canceled", "removed", "settled"), allowNull: false },
-        description: { type: DataTypes.TEXT, allowNull: true }
+        description: { type: DataTypes.TEXT, allowNull: true },
     }, { timestamps: true });
 
     Stock.associate = (models) => {
@@ -40,6 +52,11 @@ module.exports = (sequelize, DataTypes) => {
         Stock.hasOne(models.ShopAllCommission, {
             foreignKey: 'stockId'// Singular name for one-to-one
         });
+        // --- Add association to StockBatch ---
+        Stock.belongsTo(models.StockBatch, {
+            foreignKey: 'stockBatchId'
+        });
+        // --- End of addition ---
     };
 
     return Stock;

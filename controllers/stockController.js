@@ -2,144 +2,407 @@ const db = require("../models");
 const sequelize = db.sequelize;
 const Sequelize = db.Sequelize;
 const { Op } = Sequelize;
-const { Stock, Metric, Product, Price, Percentage, SalesmanCommission, SubAgentCommission,
-    AgentCommission, DistributorCommission, ShopAllCommission } = require("../models");
+const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
+    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch } = require("../models");
 const logger = require("../config/logger");
 
 
+// --- Internal Helper: Create ONE Stock entry (part of a batch) ---
+// Defers actual stock level calculation and commission generation to settlement
+async function _internalCreateSingleStock(itemData, transaction, username, batchId) {
+    const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, description } = itemData;
 
-// --- Helper Function for Single Stock Creation Logic ---
-// Extracts the core logic from createStock, making it reusable and testable
-// Takes transaction item data and the database transaction object
-async function _internalCreateSingleStock(itemData, transaction, username) {
-    const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, status, description } = itemData;
-
-    let initialAmount = null;
-    // Find last settled stock WITHIN the same transaction for consistency
-    const lastStock = await Stock.findOne({
-        where: { metricId, status: "settled" }, // Or adjust status logic if needed
-        order: [["createdAt", "DESC"]],
-        transaction // Use the transaction
-    });
-    if (lastStock) {
-        // Logic might need refinement depending on how stock_in/out affect each other within a batch
-        // For simplicity assuming stock_in updates based on last settled state before the batch
-        initialAmount = lastStock.updateAmount; // Assume stock_in always uses the last settled amount
-    }
-
-    // Determine updateAmount based on current item's event type
-    const updateAmount = stockEvent === 'stock_in'
-        ? (initialAmount !== null ? initialAmount : 0) + amount // Handle case where initialAmount might be null
-        : (initialAmount !== null ? initialAmount : 0) - amount; // Assuming stock_out decreases
-
-
-    // Fetch the latest price for this metric WITHIN the same transaction
+    // Price fetching is still needed at creation to store the price context
     const latestPrice = await Price.findOne({
-        where: { metricId },
-        order: [["createdAt", "DESC"]],
-        transaction // Use the transaction
+        where: { metricId }, order: [["createdAt", "DESC"]], transaction
     });
 
     if (!latestPrice) {
-        // If price is missing, throw an error to rollback the whole transaction
         throw new Error(`No price available for metricId ${metricId}`);
     }
 
-    // Calculate stock values based on the current item
+    // Store prices captured at the time of creation
     const totalPrice = amount * latestPrice.price;
-    const totalNetPrice = amount * latestPrice.netPrice;
+    const totalNetPrice = amount * latestPrice.netPrice; // Assuming netPrice is available
     const salesmanPrice = salesId ? amount * latestPrice.salesmanPrice : 0;
     const subAgentPrice = subAgentId ? amount * latestPrice.subAgentPrice : 0;
     const agentPrice = agentId ? amount * latestPrice.agentPrice : 0;
 
-    // Placeholder values - commissions might need separate calculation/logic
+    const stock = await Stock.create({
+        metricId,
+        stockEvent,
+        initialAmount: null, // Calculated at settlement
+        amount,             // The amount for THIS specific transaction
+        updateAmount: null, // Calculated at settlement
+        totalPrice,         // Store price context
+        totalNetPrice,      // Store price context
+        salesmanPrice,      // Store price context
+        subAgentPrice,      // Store price context
+        agentPrice,         // Store price context
+        totalDistributorShare: 0, // Calculated at settlement
+        totalSalesShare: 0,       // Calculated at settlement
+        totalSubAgentShare: 0,    // Calculated at settlement
+        totalAgentShare: 0,       // Calculated at settlement
+        totalShopShare: 0,        // Calculated at settlement
+        createdBy: username,
+        salesId,
+        subAgentId,
+        agentId,
+        shopId,
+        status: "created", // Initial status
+        description,
+        stockBatchId: batchId // Link to the batch
+    }, { transaction });
+
+    return stock;
+}
+
+
+// --- Controller: Create Stocks in Batch ---
+exports.createStockBatch = async (req, res) => {
+    const { transactions } = req.body;
+    const username = req.user.username;
+    let batchRecord = null;
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+        return res.status(400).json({ error: "Request body must contain a non-empty 'transactions' array." });
+    }
+
+    // 1. Create StockBatch Record (outside main transaction)
+    try {
+        batchRecord = await StockBatch.create({
+            batchType: 'stock_creation',
+            status: 'processing',
+            itemCount: transactions.length,
+            createdBy: username,
+        });
+    } catch (batchError) {
+        logger.error(`Failed to create initial StockBatch record: ${batchError.stack}`);
+        return res.status(500).json({ error: "Failed to initiate batch process." });
+    }
+
+    // 2. Transaction for Creating Stock Entries
+    const stockTransaction = await sequelize.transaction();
+    try {
+        const createdStocks = [];
+        // Use Promise.all for concurrent creation within the transaction
+        await Promise.all(transactions.map(async (item) => {
+            const newStock = await _internalCreateSingleStock(item, stockTransaction, username, batchRecord.id);
+            createdStocks.push(newStock);
+        }));
+
+        // 3a. Commit Stock Transaction
+        await stockTransaction.commit();
+
+        // 4a. Update Batch Record Status (Success)
+        try {
+            batchRecord.status = 'completed';
+            batchRecord.successCount = createdStocks.length;
+            batchRecord.failureCount = 0;
+            await batchRecord.save();
+            logger.info(`StockBatch ${batchRecord.id} completed successfully.`);
+            res.status(201).json({
+                message: "Batch stock creation successful",
+                batchId: batchRecord.id,
+                data: createdStocks
+            });
+        } catch (updateError) {
+            logger.error(`Failed to update StockBatch ${batchRecord.id} status to completed: ${updateError.stack}`);
+            res.status(201).json({ // Stocks were created, but batch status update failed
+                message: "Batch stock creation successful, but failed to update batch status.",
+                batchId: batchRecord.id,
+                data: createdStocks
+            });
+        }
+
+    } catch (error) {
+        // 3b. Rollback Stock Transaction
+        await stockTransaction.rollback();
+
+        // 4b. Update Batch Record Status (Failure)
+        try {
+            batchRecord.status = 'failed';
+            batchRecord.successCount = 0;
+            batchRecord.failureCount = batchRecord.itemCount;
+            batchRecord.errorMessage = error.message;
+            await batchRecord.save();
+            logger.error(`StockBatch ${batchRecord.id} failed: ${error.message}`);
+        } catch (updateError) {
+            logger.error(`Failed to update StockBatch ${batchRecord.id} status to failed: ${updateError.stack}`);
+        }
+
+        logger.error(`Batch stock creation failed: ${error.stack}`);
+        res.status(500).json({
+            error: "Batch stock creation failed",
+            batchId: batchRecord.id,
+            details: error.message
+        });
+    }
+};
+
+
+// --- Internal Helper: Settle ONE Stock (calculates levels, commissions) ---
+async function _internalSettleSingleStock(stockInstance, transaction, username) {
+    if (stockInstance.status !== 'created') {
+        logger.warn(`Attempted to settle Stock ID ${stockInstance.id} which is not in 'created' status (Current: ${stockInstance.status}). Skipping.`);
+        // Decide whether to throw an error or just skip. Skipping might be okay if re-running settlement.
+        // For safety, let's throw to ensure atomicity unless explicitly designed otherwise.
+        throw new Error(`Stock ID ${stockInstance.id} is not in 'created' status.`);
+        // return; // Alternative: just skip this one
+    }
+
+    const { id, metricId, stockEvent, amount, salesId, subAgentId, agentId } = stockInstance;
+    const totalNetPrice = stockInstance.totalNetPrice; // Use stored net price
+
+    // --- Calculate stock levels at settlement time ---
+    let initialAmountAtSettlement = 0;
+    const lastSettledStockBeforeThis = await Stock.findOne({
+        where: { metricId, status: "settled" },
+        order: [["updatedAt", "DESC"], ["id", "DESC"]], // Order reliably
+        transaction
+    });
+
+    if (lastSettledStockBeforeThis) {
+        initialAmountAtSettlement = lastSettledStockBeforeThis.updateAmount || 0; // Handle null case
+    }
+
+    const updateAmountAtSettlement = stockEvent === 'stock_in'
+        ? initialAmountAtSettlement + amount
+        : initialAmountAtSettlement - amount;
+
+    if (stockEvent === 'stock_out' && updateAmountAtSettlement < 0) { // Only check for stock_out
+        throw new Error(`Not enough stock for metricId ${metricId} when settling stock ID ${id}. Required: ${amount}, Available: ${initialAmountAtSettlement}`);
+    }
+    // --- End stock level calculation ---
+
+    // --- Commission Calculation ---
+    const percentages = await Percentage.findAll({ transaction });
+    const percentageMap = {};
+    percentages.forEach(p => { percentageMap[p.key] = p.value; });
+    let distributorPercentage = 0;
     let totalDistributorShare = 0;
     let totalSalesShare = null;
     let totalSubAgentShare = null;
     let totalAgentShare = null;
     let totalShopShare = null;
 
-    // Create Stock Entry WITHIN the same transaction
-    const stock = await Stock.create({
-        metricId,
-        stockEvent,
-        initialAmount,
-        amount,
-        updateAmount,
-        totalPrice,
-        totalNetPrice,
-        salesmanPrice,
-        subAgentPrice,
-        agentPrice,
-        totalDistributorShare,
-        totalSalesShare,
-        totalSubAgentShare,
-        totalAgentShare,
-        totalShopShare,
-        createdBy: username, // Pass username from request
-        salesId,
-        subAgentId,
-        agentId,
-        shopId,
-        status: "created", // Or apply your status logic ('settled'?)
-        description
-    }, { transaction }); // Pass the transaction object
+    if (salesId) {
+        distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
+        totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        totalSalesShare = totalNetPrice * (percentageMap["salesman"] || 0) / 100;
+    } else if (subAgentId) {
+        distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
+        totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] || 0) / 100;
+    } else if (agentId) {
+        distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
+        totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        totalAgentShare = totalNetPrice * (percentageMap["agent"] || 0) / 100;
+    } // else: No specific seller type, distributor share remains 0 unless other logic applies
 
-    return stock; // Return the created stock record
+    // Calculate shop share if it's a stock_out and there's a relevant seller OR if it always applies
+    if (stockEvent === 'stock_out' && (salesId || subAgentId || agentId)) { // Example condition
+         totalShopShare = totalNetPrice * (percentageMap["shop"] || 0) / 100;
+    }
+    // --- End Commission Calculation ---
+
+
+    // --- Update Stock Instance ---
+    stockInstance.status = "settled";
+    stockInstance.initialAmount = initialAmountAtSettlement;
+    stockInstance.updateAmount = updateAmountAtSettlement;
+    stockInstance.totalSalesShare = totalSalesShare;
+    stockInstance.totalDistributorShare = totalDistributorShare;
+    stockInstance.totalSubAgentShare = totalSubAgentShare;
+    stockInstance.totalAgentShare = totalAgentShare;
+    stockInstance.totalShopShare = totalShopShare;
+    stockInstance.settledBy = username;
+    await stockInstance.save({ transaction });
+    // --- End Stock Update ---
+
+
+    // --- Create Commission Records ---
+    const commissionData = { stockId: id, totalNetPrice, createdBy: username };
+    if (salesId && totalSalesShare !== null) {
+        await SalesmanCommission.create({ ...commissionData, salesId, percentage: percentageMap["salesman"], amount: totalSalesShare }, { transaction });
+    } else if (subAgentId && totalSubAgentShare !== null) {
+        await SubAgentCommission.create({ ...commissionData, subAgentId, percentage: percentageMap["subAgent"], amount: totalSubAgentShare }, { transaction });
+    } else if (agentId && totalAgentShare !== null) {
+        await AgentCommission.create({ ...commissionData, agentId, percentage: percentageMap["agent"], amount: totalAgentShare }, { transaction });
+    }
+
+    if (totalDistributorShare > 0) { // Only create if there's a share
+        await DistributorCommission.create({ ...commissionData, percentage: distributorPercentage, amount: totalDistributorShare }, { transaction });
+    }
+
+    if (totalShopShare !== null && totalShopShare !== 0) { // Only create if there's a share
+        await ShopAllCommission.create({ ...commissionData, salesId, subAgentId, agentId, percentage: percentageMap["shop"], amount: totalShopShare }, { transaction });
+    }
+    // --- End Commission Records ---
+
+    logger.info(`Stock ID ${id} settled successfully within transaction by ${username}.`);
 }
 
 
-// --- New Batch Controller Function ---
-exports.createStockBatch = async (req, res) => {
-    // Start a Sequelize managed transaction
-    const transaction = await sequelize.transaction();
-    try {
-        // Expect an array of transactions in the request body, e.g., { transactions: [...] }
-        const { transactions } = req.body;
+// --- Controller: Settle Stocks in Batch ---
+exports.settleStockBatch = async (req, res) => {
+    const { batchId } = req.params;
+    const username = req.user.username;
+    let batchRecord = null;
+    const settlementTransaction = await sequelize.transaction();
 
-        if (!Array.isArray(transactions) || transactions.length === 0) {
-            await transaction.rollback(); // Rollback before sending error
-            return res.status(400).json({ error: "Request body must contain a non-empty 'transactions' array." });
+    try {
+        // 1. Find and Lock Batch Record
+        batchRecord = await StockBatch.findByPk(batchId, {
+            lock: settlementTransaction.LOCK.UPDATE,
+            transaction: settlementTransaction
+        });
+
+        if (!batchRecord) {
+            await settlementTransaction.rollback();
+            return res.status(404).json({ error: `StockBatch with ID ${batchId} not found.` });
         }
 
-        const createdStocks = [];
-        const errors = [];
+        // 2. Validate Batch Status
+        if (batchRecord.status !== 'completed') {
+            await settlementTransaction.rollback();
+            return res.status(400).json({ error: `StockBatch ${batchId} cannot be settled. Current status: ${batchRecord.status}. Expected: completed.` });
+        }
 
-        // Use Promise.all for concurrent processing within the transaction (optional, can use sequential for...of loop too)
-        await Promise.all(transactions.map(async (item) => {
-            // Call the internal helper for each item
-            const newStock = await _internalCreateSingleStock(item, transaction, req.user.username);
-            createdStocks.push(newStock);
-        }));
+        // 3. Find Associated 'created' Stocks
+        const stocksToSettle = await Stock.findAll({
+            where: { stockBatchId: batchId, status: 'created' },
+            transaction: settlementTransaction // Important: find within transaction
+        });
 
-        // If using sequential loop:
-        // for (const item of transactions) {
-        //     try {
-        //         const newStock = await _internalCreateSingleStock(item, transaction, req.user.username);
-        //         createdStocks.push(newStock);
-        //     } catch (itemError) {
-        //          // Log specific item error - the main catch block will handle rollback
-        //         logger.error(`Error processing item ${item.metricId}: ${itemError.message}`);
-        //         // Re-throw the error to ensure the transaction rolls back
-        //          throw itemError;
-        //     }
-        // }
+        if (stocksToSettle.length === 0) {
+            logger.warn(`StockBatch ${batchId} settlement requested, but no stock entries found in 'created' status.`);
+            batchRecord.status = 'settled'; // Mark batch as settled
+            await batchRecord.save({ transaction: settlementTransaction });
+            await settlementTransaction.commit();
+            return res.status(200).json({ message: `Batch ${batchId} already settled or had no items needing settlement.`, affectedCount: 0 });
+        }
 
+        // 4. Settle Each Stock (Sequentially Recommended for stock levels)
+        let settledCount = 0;
+        let errorsDuringSettlement = [];
+        for (const stock of stocksToSettle) {
+            try {
+                await _internalSettleSingleStock(stock, settlementTransaction, username);
+                settledCount++;
+            } catch (settleError) {
+                logger.error(`Error settling Stock ID ${stock.id} within batch ${batchId}: ${settleError.message}`);
+                errorsDuringSettlement.push({ stockId: stock.id, error: settleError.message });
+                // Decide whether to continue or stop on first error. Stopping ensures full atomicity.
+                throw settleError; // Re-throw to trigger main catch block and rollback
+            }
+        }
 
-        // If all items were processed without error, commit the transaction
-        await transaction.commit();
-        logger.info(`${createdStocks.length} stock entries created successfully in batch.`);
-        res.status(201).json({ message: "Batch stock creation successful", data: createdStocks });
+        // 5. Update Batch Status
+        batchRecord.status = 'settled';
+        batchRecord.successCount = settledCount; // Record how many actually got processed before commit/error
+        batchRecord.failureCount = errorsDuringSettlement.length; // Should be 0 if commit is reached
+        await batchRecord.save({ transaction: settlementTransaction });
+
+        // 6. Commit Transaction
+        await settlementTransaction.commit();
+
+        logger.info(`StockBatch ${batchId} settled successfully by ${username}. ${settledCount} stock entries updated.`);
+        res.status(200).json({ message: `Batch ${batchId} settled successfully.`, affectedCount: settledCount });
 
     } catch (error) {
-        // If any error occurred during the process (incl. _internalCreateSingleStock), rollback the transaction
-        await transaction.rollback();
-        logger.error(`Batch stock creation failed: ${error.stack}`);
-        // Provide a more specific error message if possible (e.g., from the caught error)
-        res.status(500).json({ error: "Batch stock creation failed", details: error.message });
+        // 7. Rollback on Any Error
+        await settlementTransaction.rollback();
+
+        // 8. Attempt to Update Batch Status to Failed (outside original transaction)
+        if (batchRecord) { // Check if batchRecord was fetched
+           try {
+                // Fetch the record again to update it, as the instance might be stale after rollback
+                await StockBatch.update(
+                  { status: 'failed', errorMessage: `Settlement failed: ${error.message}` },
+                  { where: { id: batchId, status: { [Op.not]: 'settled' } } } // Avoid overwriting if somehow settled
+                );
+               logger.error(`Updated StockBatch ${batchId} status to failed after settlement rollback.`);
+           } catch (updateError) {
+               logger.error(`Failed to update StockBatch ${batchId} status after settlement rollback: ${updateError.stack}`);
+           }
+        }
+
+        logger.error(`Failed to settle StockBatch ${batchId}: ${error.stack}`);
+        res.status(500).json({ error: "Failed to settle stock batch", details: error.message });
     }
 };
 
+
+// --- NEW: Controller to Get Stock Batches ---
+exports.getStockBatches = async (req, res) => {
+    try {
+        // --- Pagination ---
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 items per page
+        const offset = (page - 1) * limit;
+
+        // --- Filtering ---
+        const whereClause = {};
+        if (req.query.status) {
+            // Allow filtering by status (e.g., ?status=completed)
+            whereClause.status = req.query.status;
+        } else {
+             // Default to showing batches ready for settlement or already settled?
+             // Or show all? Let's default to showing 'completed' for the settlement use case.
+             whereClause.status = 'completed'; // Default filter
+             // To show all except 'processing'/'failed':
+             // whereClause.status = { [Op.in]: ['completed', 'settled'] };
+             // To show all: remove this else block or pass a specific query param like ?status=all
+        }
+        if (req.query.createdBy) {
+            whereClause.createdBy = req.query.createdBy;
+        }
+        // Add date range filters if needed (e.g., using Op.between on createdAt)
+        if (req.query.fromDate && req.query.toDate) {
+             whereClause.createdAt = {
+                 [Op.between]: [new Date(req.query.fromDate), new Date(req.query.toDate)]
+             };
+        } else if (req.query.fromDate) {
+             whereClause.createdAt = { [Op.gte]: new Date(req.query.fromDate) };
+        } else if (req.query.toDate) {
+             whereClause.createdAt = { [Op.lte]: new Date(req.query.toDate) };
+        }
+
+
+        // --- Sorting ---
+        const sortBy = req.query.sortBy || 'createdAt'; // Default sort field
+        const sortOrder = req.query.sortOrder || 'DESC'; // Default sort order
+        const order = [[sortBy, sortOrder.toUpperCase()]]; // Sequelize order format
+
+        // --- Fetch Data with Count for Pagination ---
+        const { count, rows } = await StockBatch.findAndCountAll({
+            where: whereClause,
+            limit: limit,
+            offset: offset,
+            order: order,
+            // attributes: ['id', 'status', 'itemCount', 'createdBy', 'createdAt'], // Select specific fields if needed
+            distinct: true, // Recommended when using limit/offset with associations if added later
+        });
+
+        // --- Format Response ---
+        const totalPages = Math.ceil(count / limit);
+        res.status(200).json({
+            message: "Stock batches retrieved successfully.",
+            data: rows,
+            pagination: {
+                totalItems: count,
+                totalPages: totalPages,
+                currentPage: page,
+                itemsPerPage: limit
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Error retrieving stock batches: ${error.stack}`);
+        res.status(500).json({ error: "Failed to retrieve stock batches", details: error.message });
+    }
+};
 
 
 exports.createStock = async (req, res) => {
