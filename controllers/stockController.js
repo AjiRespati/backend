@@ -337,7 +337,6 @@ exports.settleStockBatch = async (req, res) => {
 
 
 // --- NEW: Controller to Get Stock Batches ---
-// --- UPDATED: Controller to Get Stock Batches with Product Info ---
 exports.getStockBatches = async (req, res) => {
     try {
         // --- Pagination ---
@@ -347,6 +346,7 @@ exports.getStockBatches = async (req, res) => {
 
         // --- Filtering ---
         const whereClause = {};
+        // (Filtering logic remains the same as before)
         if (req.query.status && req.query.status !== 'all') {
             whereClause.status = req.query.status;
         } else if (!req.query.status) {
@@ -356,22 +356,23 @@ exports.getStockBatches = async (req, res) => {
             whereClause.createdBy = req.query.createdBy;
         }
         if (req.query.startDate && req.query.endDate) {
-            whereClause.createdAt = {
-                [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
-            };
+             whereClause.createdAt = {
+                 [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
+             };
         } else if (req.query.startDate) {
-            whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
+             whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
         } else if (req.query.endDate) {
-            whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
+             whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
         }
+
 
         // --- Sorting ---
         const sortBy = req.query.sortBy || 'createdAt';
         const sortOrder = req.query.sortOrder || 'DESC';
         const order = [[sortBy, sortOrder.toUpperCase()]];
 
-        // --- Fetch Data with Count and Eager Loading ---
-        const { count, rows } = await StockBatch.findAndCountAll({
+        // --- Fetch Data with Count and Nested Includes ---
+        const { count, rows: rawBatches } = await StockBatch.findAndCountAll({ // Renamed rows to rawBatches
             where: whereClause,
             limit: limit,
             offset: offset,
@@ -379,13 +380,16 @@ exports.getStockBatches = async (req, res) => {
             distinct: true,
             include: [
                 {
-                    model: Stock,
-                    attributes: [
+                    // Use model name 'Stock' if no alias 'stockEntries' is set in StockBatch model
+                    model: Stock, // Use 'Stock' here since your response shows 'Stocks' key
+                    // as: 'stockEntries', // Use this line if you add the alias to the model
+                    attributes: [ // Select fields from Stock model needed for final output
                         'id',
                         'amount',
                         'stockEvent',
-                        'metricId',
+                        // 'metricId', // Keep metricId if needed
                         'totalPrice',
+                        'totalNetPrice', // Make sure this exists in your Stock model/DB
                         'salesmanPrice',
                         'subAgentPrice',
                         'agentPrice'
@@ -394,13 +398,12 @@ exports.getStockBatches = async (req, res) => {
                     include: [
                         {
                             model: Metric,
-                            attributes: ['id', 'metricType', 'productId'],
+                            attributes: ['id', 'metricType', 'productId'], // Select fields needed from Metric
                             required: false,
                             include: [
                                 {
                                     model: Product,
-                                    // --- Corrected field name ---
-                                    attributes: ['id', 'name'], // Use 'name'
+                                    attributes: ['id', 'name'], // Select fields needed from Product
                                     required: false,
                                 }
                             ]
@@ -408,15 +411,66 @@ exports.getStockBatches = async (req, res) => {
                     ]
                 }
             ]
-            // Consider adding top-level attributes if needed:
-            // attributes: ['id', 'status', 'itemCount', 'createdBy', 'createdAt'],
+            // If selecting top-level attributes, do it here
+            // attributes: ['id', 'status', 'itemCount', 'createdBy', 'createdAt', 'updatedAt', /* etc */],
         });
+
+        // --- Post-Processing: Flatten the nested structure ---
+        const processedData = rawBatches.map(batchInstance => {
+            // Convert Sequelize instance to plain object
+            const batch = batchInstance.get({ plain: true });
+
+            // Check if Stocks array exists and process it
+            if (batch.Stocks && Array.isArray(batch.Stocks)) {
+                batch.Stocks = batch.Stocks.map(stock => {
+                    // Prepare the flattened stock object
+                    const flattenedStock = {
+                        // Copy direct stock fields
+                        id: stock.id,
+                        amount: stock.amount,
+                        stockEvent: stock.stockEvent,
+                        // metricId: stock.metricId,  // no metricId
+                        totalPrice: stock.totalPrice,
+                        totalNetPrice: stock.totalNetPrice,
+                        salesmanPrice: stock.salesmanPrice,
+                        subAgentPrice: stock.subAgentPrice,
+                        agentPrice: stock.agentPrice,
+                        // Add other stock fields as needed
+                    };
+
+                    // Flatten Metric and Product info if they exist
+                    if (stock.Metric) {
+                        flattenedStock.metricType = stock.Metric.metricType;
+                        flattenedStock.productId = stock.Metric.productId; // Keep productId if needed
+
+                        if (stock.Metric.Product) {
+                            // Use 'productName' key in response for clarity, maps from 'name' field
+                            flattenedStock.productName = stock.Metric.Product.name;
+                        } else {
+                            flattenedStock.productName = null; // Handle case where Product might be missing
+                        }
+                    } else {
+                        // Handle case where Metric might be missing
+                        flattenedStock.metricType = null;
+                        flattenedStock.productId = null;
+                        flattenedStock.productName = null;
+                    }
+                    return flattenedStock;
+                });
+            } else {
+                 // Ensure the key exists even if empty, consistent with structure
+                 batch.Stocks = [];
+            }
+            return batch; // Return the modified batch object
+        });
+        // --- End Post-Processing ---
+
 
         // --- Format Response ---
         const totalPages = Math.ceil(count / limit);
         res.status(200).json({
             message: "Stock batches retrieved successfully.",
-            data: rows,
+            data: processedData, // Use the processed data with flattened structure
             pagination: {
                 totalItems: count,
                 totalPages: totalPages,
@@ -427,9 +481,8 @@ exports.getStockBatches = async (req, res) => {
 
     } catch (error) {
         logger.error(`Error retrieving stock batches: ${error.stack}`);
-        // Log the specific Sequelize error if helpful during debugging
         if (error instanceof Sequelize.BaseError) {
-            logger.error(`Sequelize Error Details: ${JSON.stringify(error, null, 2)}`);
+             logger.error(`Sequelize Error Details: ${JSON.stringify(error, null, 2)}`);
         }
         res.status(500).json({ error: "Failed to retrieve stock batches", details: error.message });
     }
