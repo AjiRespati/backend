@@ -3,7 +3,7 @@ const sequelize = db.sequelize;
 const Sequelize = db.Sequelize;
 const { Op } = Sequelize;
 const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
-    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch, Product } = require("../models");
+    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch, Product, User } = require("../models");
 const logger = require("../config/logger");
 
 
@@ -63,7 +63,13 @@ exports.createStockBatch = async (req, res) => {
     const { transactions } = req.body;
     const username = req.user.username;
     const userId = req.user.id;
+    const user = await User.findOne({ where: { id:req.user.id } });
+    if (!user) return res.status(400).json({ message: 'Invalid user' });
+    const userDesc = user.levelDesc;
+
     let batchRecord = null;
+
+    
 
     if (!Array.isArray(transactions) || transactions.length === 0) {
         return res.status(400).json({ error: "Request body must contain a non-empty 'transactions' array." });
@@ -76,7 +82,8 @@ exports.createStockBatch = async (req, res) => {
             status: 'processing',
             itemCount: transactions.length,
             createdBy: username,
-            creatorId: userId
+            creatorId: userId,
+            userDesc: userDesc,
         });
     } catch (batchError) {
         logger.error(`Failed to create initial StockBatch record: ${batchError.stack}`);

@@ -46,7 +46,59 @@ exports.login = async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.json({ accessToken, refreshToken });
+        let salesId = null;
+        let subAgentId = null;
+        let agentId = null;
+
+        switch (user.level) {
+            case 1:
+                const existingSales = await Salesman.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingSales) return res.status(404).json({ error: 'sales not found' });
+
+                salesId = existingSales.id;
+
+                break;
+            case 2:
+                const existingSubAgent = await SubAgent.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingSubAgent) return res.status(404).json({ error: 'subagent not found' });
+
+                subAgentId = existingSubAgent.id;
+
+                break;
+            case 1:
+                const existingAgent = await Agent.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingAgent) return res.status(404).json({ error: 'sales not found' });
+
+                agentId = existingAgent.id;
+
+                break;
+
+            default:
+                break;
+        }
+        res.json({
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            image: user.image,
+            address: user.address,
+            phone: user.phone,
+            email: user.email,
+            level: user.level,
+            salesId: salesId,
+            subAgentId: subAgentId,
+            agentId: agentId,
+            levelDesc: user.levelDesc,
+            accessToken,
+            refreshToken
+        });
+        // res.json({ accessToken, refreshToken });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -67,7 +119,7 @@ exports.refreshToken = async (req, res) => {
         jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
             if (err) return res.status(403).json({ message: 'Token expired or invalid' });
 
-            const newAccessToken = jwt.sign({ id: decoded.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '15m' });
+            const newAccessToken = jwt.sign({ id: decoded.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
             res.json({ accessToken: newAccessToken });
         });
     } catch (error) {
