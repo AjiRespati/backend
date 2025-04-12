@@ -3,7 +3,7 @@ const sequelize = db.sequelize;
 const Sequelize = db.Sequelize;
 const { Op } = Sequelize;
 const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
-    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch } = require("../models");
+    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch, Product } = require("../models");
 const logger = require("../config/logger");
 
 
@@ -204,7 +204,7 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
 
     // Calculate shop share if it's a stock_out and there's a relevant seller OR if it always applies
     if (stockEvent === 'stock_out' && (salesId || subAgentId || agentId)) { // Example condition
-         totalShopShare = totalNetPrice * (percentageMap["shop"] || 0) / 100;
+        totalShopShare = totalNetPrice * (percentageMap["shop"] || 0) / 100;
     }
     // --- End Commission Calculation ---
 
@@ -318,16 +318,16 @@ exports.settleStockBatch = async (req, res) => {
 
         // 8. Attempt to Update Batch Status to Failed (outside original transaction)
         if (batchRecord) { // Check if batchRecord was fetched
-           try {
+            try {
                 // Fetch the record again to update it, as the instance might be stale after rollback
                 await StockBatch.update(
-                  { status: 'failed', errorMessage: `Settlement failed: ${error.message}` },
-                  { where: { id: batchId, status: { [Op.not]: 'settled' } } } // Avoid overwriting if somehow settled
+                    { status: 'failed', errorMessage: `Settlement failed: ${error.message}` },
+                    { where: { id: batchId, status: { [Op.not]: 'settled' } } } // Avoid overwriting if somehow settled
                 );
-               logger.error(`Updated StockBatch ${batchId} status to failed after settlement rollback.`);
-           } catch (updateError) {
-               logger.error(`Failed to update StockBatch ${batchId} status after settlement rollback: ${updateError.stack}`);
-           }
+                logger.error(`Updated StockBatch ${batchId} status to failed after settlement rollback.`);
+            } catch (updateError) {
+                logger.error(`Failed to update StockBatch ${batchId} status after settlement rollback: ${updateError.stack}`);
+            }
         }
 
         logger.error(`Failed to settle StockBatch ${batchId}: ${error.stack}`);
@@ -337,54 +337,79 @@ exports.settleStockBatch = async (req, res) => {
 
 
 // --- NEW: Controller to Get Stock Batches ---
+// --- UPDATED: Controller to Get Stock Batches with Product Info ---
 exports.getStockBatches = async (req, res) => {
     try {
         // --- Pagination ---
         const page = parseInt(req.query.page, 10) || 1;
-        const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 items per page
+        const limit = parseInt(req.query.limit, 10) || 10;
         const offset = (page - 1) * limit;
 
         // --- Filtering ---
         const whereClause = {};
-        if (req.query.status) {
-            // Allow filtering by status (e.g., ?status=completed)
+        if (req.query.status && req.query.status !== 'all') {
             whereClause.status = req.query.status;
-        } else {
-             // Default to showing batches ready for settlement or already settled?
-             // Or show all? Let's default to showing 'completed' for the settlement use case.
-             whereClause.status = 'completed'; // Default filter
-             // To show all except 'processing'/'failed':
-             // whereClause.status = { [Op.in]: ['completed', 'settled'] };
-             // To show all: remove this else block or pass a specific query param like ?status=all
+        } else if (!req.query.status) {
+            whereClause.status = 'completed'; // Default filter
         }
         if (req.query.createdBy) {
             whereClause.createdBy = req.query.createdBy;
         }
-        // Add date range filters if needed (e.g., using Op.between on createdAt)
-        if (req.query.fromDate && req.query.toDate) {
-             whereClause.createdAt = {
-                 [Op.between]: [new Date(req.query.fromDate), new Date(req.query.toDate)]
-             };
-        } else if (req.query.fromDate) {
-             whereClause.createdAt = { [Op.gte]: new Date(req.query.fromDate) };
-        } else if (req.query.toDate) {
-             whereClause.createdAt = { [Op.lte]: new Date(req.query.toDate) };
+        if (req.query.startDate && req.query.endDate) {
+            whereClause.createdAt = {
+                [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
+            };
+        } else if (req.query.startDate) {
+            whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
+        } else if (req.query.endDate) {
+            whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
         }
 
-
         // --- Sorting ---
-        const sortBy = req.query.sortBy || 'createdAt'; // Default sort field
-        const sortOrder = req.query.sortOrder || 'DESC'; // Default sort order
-        const order = [[sortBy, sortOrder.toUpperCase()]]; // Sequelize order format
+        const sortBy = req.query.sortBy || 'createdAt';
+        const sortOrder = req.query.sortOrder || 'DESC';
+        const order = [[sortBy, sortOrder.toUpperCase()]];
 
-        // --- Fetch Data with Count for Pagination ---
+        // --- Fetch Data with Count and Eager Loading ---
         const { count, rows } = await StockBatch.findAndCountAll({
             where: whereClause,
             limit: limit,
             offset: offset,
             order: order,
-            // attributes: ['id', 'status', 'itemCount', 'createdBy', 'createdAt'], // Select specific fields if needed
-            distinct: true, // Recommended when using limit/offset with associations if added later
+            distinct: true,
+            include: [
+                {
+                    model: Stock,
+                    attributes: [
+                        'id',
+                        'amount',
+                        'stockEvent',
+                        'metricId',
+                        'totalPrice',
+                        'salesmanPrice',
+                        'subAgentPrice',
+                        'agentPrice'
+                    ],
+                    required: false,
+                    include: [
+                        {
+                            model: Metric,
+                            attributes: ['id', 'metricType', 'productId'],
+                            required: false,
+                            include: [
+                                {
+                                    model: Product,
+                                    // --- Corrected field name ---
+                                    attributes: ['id', 'name'], // Use 'name'
+                                    required: false,
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+            // Consider adding top-level attributes if needed:
+            // attributes: ['id', 'status', 'itemCount', 'createdBy', 'createdAt'],
         });
 
         // --- Format Response ---
@@ -402,10 +427,13 @@ exports.getStockBatches = async (req, res) => {
 
     } catch (error) {
         logger.error(`Error retrieving stock batches: ${error.stack}`);
+        // Log the specific Sequelize error if helpful during debugging
+        if (error instanceof Sequelize.BaseError) {
+            logger.error(`Sequelize Error Details: ${JSON.stringify(error, null, 2)}`);
+        }
         res.status(500).json({ error: "Failed to retrieve stock batches", details: error.message });
     }
 };
-
 
 exports.createStock = async (req, res) => {
     try {
