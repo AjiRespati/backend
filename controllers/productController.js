@@ -112,13 +112,10 @@ exports.getAllProducts = async (req, res) => {
 
         const [results] = await sequelize.query(query);
 
-        console.log("HASILNYA: ", results);
-
         let realResult = [];
         let productMap = new Map();
 
         results.forEach((item) => {
-            console.log(item.productId);
             if (productMap.has(item.productId)) {
                 let existingItem = productMap.get(item.productId);
                 existingItem.totalStock += item.totalStock;

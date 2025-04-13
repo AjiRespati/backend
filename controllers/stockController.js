@@ -656,7 +656,6 @@ exports.stockListByProduct = async (req, res) => {
         // ✅ Get all metric IDs for this product
         const metrics = await Metric.findAll({ where: { productId } });
         const metricIds = metrics.map(m => m.id);
-        console.log(metricIds);
 
         const stocks = await Stock.findAll({ where: { metricId: metricIds } });
 
