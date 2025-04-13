@@ -63,13 +63,13 @@ exports.createStockBatch = async (req, res) => {
     const { transactions } = req.body;
     const username = req.user.username;
     const userId = req.user.id;
-    const user = await User.findOne({ where: { id:req.user.id } });
+    const user = await User.findOne({ where: { id: req.user.id } });
     if (!user) return res.status(400).json({ message: 'Invalid user' });
     const userDesc = user.levelDesc;
 
     let batchRecord = null;
 
-    
+
 
     if (!Array.isArray(transactions) || transactions.length === 0) {
         return res.status(400).json({ error: "Request body must contain a non-empty 'transactions' array." });
@@ -363,13 +363,13 @@ exports.getStockBatches = async (req, res) => {
             whereClause.createdBy = req.query.createdBy;
         }
         if (req.query.startDate && req.query.endDate) {
-             whereClause.createdAt = {
-                 [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
-             };
+            whereClause.createdAt = {
+                [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
+            };
         } else if (req.query.startDate) {
-             whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
+            whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
         } else if (req.query.endDate) {
-             whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
+            whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
         }
 
 
@@ -465,8 +465,8 @@ exports.getStockBatches = async (req, res) => {
                     return flattenedStock;
                 });
             } else {
-                 // Ensure the key exists even if empty, consistent with structure
-                 batch.Stocks = [];
+                // Ensure the key exists even if empty, consistent with structure
+                batch.Stocks = [];
             }
             return batch; // Return the modified batch object
         });
@@ -489,7 +489,7 @@ exports.getStockBatches = async (req, res) => {
     } catch (error) {
         logger.error(`Error retrieving stock batches: ${error.stack}`);
         if (error instanceof Sequelize.BaseError) {
-             logger.error(`Sequelize Error Details: ${JSON.stringify(error, null, 2)}`);
+            logger.error(`Sequelize Error Details: ${JSON.stringify(error, null, 2)}`);
         }
         res.status(500).json({ error: "Failed to retrieve stock batches", details: error.message });
     }
@@ -521,8 +521,8 @@ exports.cancelStockBatch = async (req, res) => {
         // You might adjust this logic (e.g., allow canceling 'processing' if needed, but that's complex).
         const cancelableStatuses = ['completed', 'processing']; // Define which statuses can be canceled
         if (!cancelableStatuses.includes(batchRecord.status)) {
-             await transaction.rollback();
-             return res.status(400).json({ error: `StockBatch ${batchId} cannot be canceled. Current status: ${batchRecord.status}. Required: ${cancelableStatuses.join(' or ')}.` });
+            await transaction.rollback();
+            return res.status(400).json({ error: `StockBatch ${batchId} cannot be canceled. Current status: ${batchRecord.status}. Required: ${cancelableStatuses.join(' or ')}.` });
         }
 
 
@@ -568,13 +568,13 @@ exports.cancelStockBatch = async (req, res) => {
         if (batchRecord && batchRecord.status !== 'canceled') { // Check if batchRecord was fetched and not already canceled
             try {
                 await StockBatch.update(
-                  { status: 'failed', errorMessage: `Cancellation failed: ${error.message}` },
-                  { where: { id: batchId } } // Update outside rolled-back transaction
+                    { status: 'failed', errorMessage: `Cancellation failed: ${error.message}` },
+                    { where: { id: batchId } } // Update outside rolled-back transaction
                 );
-               logger.error(`Attempted to mark StockBatch ${batchId} as failed after cancellation rollback.`);
-           } catch (updateError) {
-               logger.error(`Failed to update StockBatch ${batchId} status after cancellation rollback: ${updateError.stack}`);
-           }
+                logger.error(`Attempted to mark StockBatch ${batchId} as failed after cancellation rollback.`);
+            } catch (updateError) {
+                logger.error(`Failed to update StockBatch ${batchId} status after cancellation rollback: ${updateError.stack}`);
+            }
         }
 
 
@@ -1191,62 +1191,12 @@ exports.getTableBySalesId = async (req, res) => {
             SELECT 
                 s.id,
                 s.amount,
+                s."agentPrice",
+                s."subAgentPrice",
                 s."salesmanPrice",
                 s."totalSalesShare",
-                -- s."totalNetPrice",
-                s.status,
-                s."updatedAt",
-                p.name AS "productName",
-                m."metricType",
-                sh."name" AS "shopName"
-                -- pr."netPrice",
-                -- sc.amount AS "salesmanCommission",
-                -- sac.amount AS "shopAllCommission"
-            FROM "Stocks" s
-            LEFT JOIN "Metrics" m ON s."metricId" = m.id
-            LEFT JOIN "Products" p ON m."productId" = p.id
-            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
-            --  LEFT JOIN (
-            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
-            --      FROM "Prices" 
-            --      ORDER BY "metricId", "createdAt" DESC
-            --  ) pr ON m.id = pr."metricId"
-            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
-            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
-            WHERE s."salesId" = :salesId
-            AND s."createdAt" BETWEEN :fromDate AND :toDate
-            ORDER BY s."createdAt" DESC
-        `;
-
-        const stocks = await sequelize.query(query, {
-            replacements: {
-                salesId,
-                fromDate: new Date(fromDate),
-                toDate: new Date(toDate)
-            },
-            type: sequelize.QueryTypes.SELECT
-        });
-
-        return res.status(200).json(stocks);
-
-    } catch (error) {
-        console.error("❌ Stock Table Error:", error);
-        res.status(500).json({ error: "Failed to fetch stock table" });
-    }
-};
-
-
-
-exports.getTableBySalesId = async (req, res) => {
-    const { fromDate, toDate, salesId } = req.body;
-
-    try {
-        const query = `
-            SELECT 
-                s.id,
-                s.amount,
-                s."salesmanPrice",
-                s."totalSalesShare",
+                s."totalSubAgentShare",
+                s."totalAgentShare",
                 -- s."totalNetPrice",
                 s.status,
                 s."updatedAt",
@@ -1299,6 +1249,12 @@ exports.getTableByShopId = async (req, res) => {
             SELECT 
                 s.id,
                 s.amount,
+                s."agentPrice",
+                s."subAgentPrice",
+                s."salesmanPrice",
+                s."totalSalesShare",
+                s."totalSubAgentShare",
+                s."totalAgentShare",
                 s."totalNetPrice",
                 s."totalShopShare",
                 s.status,
@@ -1333,55 +1289,4 @@ exports.getTableByShopId = async (req, res) => {
 };
 
 
-exports.getTableBySalesIdxxx = async (req, res) => {
-    const { fromDate, toDate, salesId } = req.body;
-
-    try {
-        const query = `
-            SELECT 
-                s.id,
-                s.amount,
-                s."salesmanPrice",
-                s."totalSalesShare",
-                -- s."totalNetPrice",
-                s.status,
-                s."updatedAt",
-                p.name AS "productName",
-                m."metricType",
-                sh."name" AS "shopName"
-                -- pr."netPrice",
-                -- sc.amount AS "salesmanCommission",
-                -- sac.amount AS "shopAllCommission"
-            FROM "Stocks" s
-            LEFT JOIN "Metrics" m ON s."metricId" = m.id
-            LEFT JOIN "Products" p ON m."productId" = p.id
-            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
-            --  LEFT JOIN (
-            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
-            --      FROM "Prices" 
-            --      ORDER BY "metricId", "createdAt" DESC
-            --  ) pr ON m.id = pr."metricId"
-            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
-            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
-            WHERE s."salesId" = :salesId
-            AND s."createdAt" BETWEEN :fromDate AND :toDate
-            ORDER BY s."createdAt" DESC
-        `;
-
-        const stocks = await sequelize.query(query, {
-            replacements: {
-                salesId,
-                fromDate: new Date(fromDate),
-                toDate: new Date(toDate)
-            },
-            type: sequelize.QueryTypes.SELECT
-        });
-
-        return res.status(200).json(stocks);
-
-    } catch (error) {
-        console.error("❌ Stock Table Error:", error);
-        res.status(500).json({ error: "Failed to fetch stock table" });
-    }
-};
 
