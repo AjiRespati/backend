@@ -3,9 +3,12 @@ const logger = require("../config/logger");
 
 exports.createShop = async (req, res) => {
     try {
-        const { name, image, address, coordinates, phone, email, salesId } = req.body;
+        const { name, image, address, coordinates, phone, email, salesId, subAgentId, agentId } = req.body;
         logger.info(`Shop : ${JSON.stringify(req.body)}`);
-        const shop = await Shop.create({ name, image, address, coordinates, phone, email, salesId, updateBy: req.user.username });
+        const shop = await Shop.create({ 
+            name, image, address, coordinates, phone, email,
+            salesId, subAgentId, agentId, updateBy: req.user.username 
+        });
 
         logger.info(`Shop created: ${shop.name}`);
         res.status(200).json(shop);
