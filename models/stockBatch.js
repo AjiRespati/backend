@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         status: { // Tracks the status of the batch processing itself
-            type: DataTypes.ENUM('processing', 'completed', 'failed', 'settled'),
+            type: DataTypes.ENUM('processing', 'completed', 'failed', 'settled', 'canceled'),
             allowNull: false,
             defaultValue: 'processing',
         },
@@ -33,6 +33,11 @@ module.exports = (sequelize, DataTypes) => {
         creatorId: { // User who initiated the batch
             type: DataTypes.STRING,
             allowNull: false,
+        },
+        // --- Optional: Add canceledBy field ---
+        canceledBy: {
+            type: DataTypes.STRING,
+            allowNull: true,
         },
         userDesc: { // User who initiated the batch
             type: DataTypes.STRING,

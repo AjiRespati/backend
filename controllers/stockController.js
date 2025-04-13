@@ -495,6 +495,95 @@ exports.getStockBatches = async (req, res) => {
     }
 };
 
+// --- NEW: Controller to Cancel a Stock Batch and Associated Stocks ---
+exports.cancelStockBatch = async (req, res) => {
+    const { batchId } = req.params;
+    const username = req.user.username; // Assumes username is available in req.user
+
+    // Use a transaction to ensure atomicity
+    const transaction = await sequelize.transaction();
+    let batchRecord = null; // Define batchRecord scope
+
+    try {
+        // 1. Find the StockBatch record and lock it
+        batchRecord = await StockBatch.findByPk(batchId, {
+            lock: transaction.LOCK.UPDATE, // Lock the row during transaction
+            transaction: transaction
+        });
+
+        if (!batchRecord) {
+            await transaction.rollback();
+            return res.status(404).json({ error: `StockBatch with ID ${batchId} not found.` });
+        }
+
+        // 2. Validate if the batch can be canceled
+        // Allow cancellation primarily for 'completed' batches before settlement.
+        // You might adjust this logic (e.g., allow canceling 'processing' if needed, but that's complex).
+        const cancelableStatuses = ['completed', 'processing']; // Define which statuses can be canceled
+        if (!cancelableStatuses.includes(batchRecord.status)) {
+             await transaction.rollback();
+             return res.status(400).json({ error: `StockBatch ${batchId} cannot be canceled. Current status: ${batchRecord.status}. Required: ${cancelableStatuses.join(' or ')}.` });
+        }
+
+
+        // 3. Update associated Stock entries to 'canceled'
+        // Only cancel stocks that are in 'created' status within this batch.
+        const [affectedStocksCount] = await Stock.update(
+            {
+                status: 'canceled',
+                canceledBy: username // Record who canceled the stock entry
+            },
+            {
+                where: {
+                    stockBatchId: batchId,
+                    status: 'created' // Only target 'created' stocks for cancellation
+                },
+                transaction: transaction // Perform within the transaction
+            }
+        );
+
+        // 4. Update the StockBatch status to 'canceled'
+        batchRecord.status = 'canceled';
+        batchRecord.canceledBy = username; // Record who canceled the batch
+        // Optionally clear success/failure counts if cancellation means they are irrelevant
+        // batchRecord.successCount = null;
+        // batchRecord.failureCount = null;
+        await batchRecord.save({ transaction: transaction }); // Save within the transaction
+
+        // 5. Commit the transaction
+        await transaction.commit();
+
+        logger.info(`StockBatch ${batchId} canceled successfully by ${username}. ${affectedStocksCount} stock entries updated to 'canceled'.`);
+        res.status(200).json({
+            message: `Batch ${batchId} canceled successfully.`,
+            affectedStocksCount: affectedStocksCount
+        });
+
+    } catch (error) {
+        // Rollback transaction on any error
+        await transaction.rollback();
+
+        // Attempt to update batch status to failed if it makes sense in your workflow
+        // Otherwise, just log the error.
+        if (batchRecord && batchRecord.status !== 'canceled') { // Check if batchRecord was fetched and not already canceled
+            try {
+                await StockBatch.update(
+                  { status: 'failed', errorMessage: `Cancellation failed: ${error.message}` },
+                  { where: { id: batchId } } // Update outside rolled-back transaction
+                );
+               logger.error(`Attempted to mark StockBatch ${batchId} as failed after cancellation rollback.`);
+           } catch (updateError) {
+               logger.error(`Failed to update StockBatch ${batchId} status after cancellation rollback: ${updateError.stack}`);
+           }
+        }
+
+
+        logger.error(`Failed to cancel StockBatch ${batchId}: ${error.stack}`);
+        res.status(500).json({ error: "Failed to cancel stock batch", details: error.message });
+    }
+};
+
+
 exports.createStock = async (req, res) => {
     try {
         const { metricId, stockEvent, amount, salesId, subAgentId, agentId, shopId, status, description } = req.body;

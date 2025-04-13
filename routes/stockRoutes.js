@@ -2,7 +2,7 @@ const express = require("express");
 const { createStock, stockListByProduct, stockListBySales,
     stockListBySubAgent, stockListByAgent, getStockTable, getStockClientTable,
     getStockHistory, settlingStock, cancelingStock, getStockResume,
-    getTableBySalesId, createStockBatch, getTableByShopId, settleStockBatch, getStockBatches
+    getTableBySalesId, createStockBatch, getTableByShopId, settleStockBatch, getStockBatches, cancelStockBatch
 } = require("../controllers/stockController");
 const authMiddleware = require("../middleware/authMiddleware");
 
@@ -22,7 +22,10 @@ router.post("/table/resume", authMiddleware, getStockResume);
 router.post("/table/salesman", authMiddleware, getTableBySalesId);
 router.post("/table/shop", authMiddleware, getTableByShopId);
 router.post("/batch", authMiddleware, createStockBatch);
-router.put("/batch/:batchId/settle", authMiddleware, settleStockBatch);
 router.get("/batches", authMiddleware, getStockBatches);
+router.put("/batch/:batchId/settle", authMiddleware, settleStockBatch);
+// --- Add the PUT route for canceling a batch ---
+router.put("/batch/:batchId/cancel", authMiddleware, cancelStockBatch);
+// --- End of addition ---
 
 module.exports = router;
