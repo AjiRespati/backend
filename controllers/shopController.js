@@ -102,13 +102,6 @@ exports.getAllShopsBySales = async (req, res) => {
             shops = subAgentShops;
         } else if (agentShops.length > 0) {
             shops = agentShops;
-        } else {
-            shops = await Shop.findAll({
-                include: [{
-                    model: Refrigerator,
-                    //   as: 'Refrigerators', // Optional: Provide an alias for the association
-                }],
-            });
         }
 
         res.json(shops);
