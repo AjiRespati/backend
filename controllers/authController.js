@@ -69,7 +69,7 @@ exports.login = async (req, res) => {
                 subAgentId = existingSubAgent.id;
 
                 break;
-            case 1:
+            case 3:
                 const existingAgent = await Agent.findOne({
                     where: { email: user.email }
                 })
@@ -181,7 +181,7 @@ exports.self = async (req, res) => {
                 subAgentId = existingSubAgent.id;
 
                 break;
-            case 1:
+            case 3:
                 const existingAgent = await Agent.findOne({
                     where: { email: user.email }
                 })

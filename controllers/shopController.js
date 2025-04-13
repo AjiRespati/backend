@@ -5,9 +5,9 @@ exports.createShop = async (req, res) => {
     try {
         const { name, image, address, coordinates, phone, email, salesId, subAgentId, agentId } = req.body;
         logger.info(`Shop : ${JSON.stringify(req.body)}`);
-        const shop = await Shop.create({ 
+        const shop = await Shop.create({
             name, image, address, coordinates, phone, email,
-            salesId, subAgentId, agentId, updateBy: req.user.username 
+            salesId, subAgentId, agentId, updateBy: req.user.username
         });
 
         logger.info(`Shop created: ${shop.name}`);
@@ -100,8 +100,15 @@ exports.getAllShopsBySales = async (req, res) => {
             shops = salesmanShops;
         } else if (subAgentShops.length > 0) {
             shops = subAgentShops;
-        } else {
+        } else if (agentShops.length > 0) {
             shops = agentShops;
+        } else {
+            shops = await Shop.findAll({
+                include: [{
+                    model: Refrigerator,
+                    //   as: 'Refrigerators', // Optional: Provide an alias for the association
+                }],
+            });
         }
 
         res.json(shops);

@@ -1240,6 +1240,122 @@ exports.getTableBySalesId = async (req, res) => {
 
 
 
+exports.getTableBySubAgentId = async (req, res) => {
+    const { fromDate, toDate, subAgentId } = req.body;
+
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.amount,
+                s."agentPrice",
+                s."subAgentPrice",
+                s."salesmanPrice",
+                s."totalSalesShare",
+                s."totalSubAgentShare",
+                s."totalAgentShare",
+                -- s."totalNetPrice",
+                s.status,
+                s."updatedAt",
+                p.name AS "productName",
+                m."metricType",
+                sh."name" AS "shopName"
+                -- pr."netPrice",
+                -- sc.amount AS "salesmanCommission",
+                -- sac.amount AS "shopAllCommission"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            --  LEFT JOIN (
+            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
+            --      FROM "Prices" 
+            --      ORDER BY "metricId", "createdAt" DESC
+            --  ) pr ON m.id = pr."metricId"
+            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
+            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
+            WHERE s."subAgentId" = :subAgentId
+            AND s."createdAt" BETWEEN :fromDate AND :toDate
+            ORDER BY s."createdAt" DESC
+        `;
+
+        const stocks = await sequelize.query(query, {
+            replacements: {
+                subAgentId,
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
+            },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(stocks);
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+
+exports.getTableByAgentId = async (req, res) => {
+    const { fromDate, toDate, agentId } = req.body;
+
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.amount,
+                s."agentPrice",
+                s."subAgentPrice",
+                s."salesmanPrice",
+                s."totalSalesShare",
+                s."totalSubAgentShare",
+                s."totalAgentShare",
+                -- s."totalNetPrice",
+                s.status,
+                s."updatedAt",
+                p.name AS "productName",
+                m."metricType",
+                sh."name" AS "shopName"
+                -- pr."netPrice",
+                -- sc.amount AS "salesmanCommission",
+                -- sac.amount AS "shopAllCommission"
+            FROM "Stocks" s
+            LEFT JOIN "Metrics" m ON s."metricId" = m.id
+            LEFT JOIN "Products" p ON m."productId" = p.id
+            LEFT JOIN "Shops" sh ON s."shopId" = sh.id
+            --  LEFT JOIN (
+            --      SELECT DISTINCT ON ("metricId") "metricId", "netPrice" 
+            --      FROM "Prices" 
+            --      ORDER BY "metricId", "createdAt" DESC
+            --  ) pr ON m.id = pr."metricId"
+            --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
+            --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
+            WHERE s."agentId" = :agentId
+            AND s."createdAt" BETWEEN :fromDate AND :toDate
+            ORDER BY s."createdAt" DESC
+        `;
+
+        const stocks = await sequelize.query(query, {
+            replacements: {
+                agentId,
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
+            },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        return res.status(200).json(stocks);
+
+    } catch (error) {
+        console.error("❌ Stock Table Error:", error);
+        res.status(500).json({ error: "Failed to fetch stock table" });
+    }
+};
+
+
+
 exports.getTableByShopId = async (req, res) => {
     const { fromDate, toDate, shopId } = req.body;
 
