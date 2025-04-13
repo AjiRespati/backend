@@ -1,5 +1,5 @@
 const express = require("express");
-const { createSubAgent, subagentLists, updateSubagent } = require("../controllers/subagentController");
+const { createSubAgent, subagentLists, updateSubagent } = require("../controllers/subAgentController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
