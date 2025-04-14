@@ -35,29 +35,35 @@ const distributorCommissionRoutes = require("./routes/distributorCommissionRoute
 const shopCommissionRoutes = require("./routes/shopCommissionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 
+const base = "/service";
+
+app.get(`${base}/`, (req, res) => {
+  res.status(200).json({ message: "Gracia Service API is running!" });
+});
+
 // ✅ Serve Static Files (Fix the Image Error)
-app.use('/api/uploads', express.static('uploads'));
+app.use(`${base}/api/uploads`, express.static('uploads'));
 
 // ✅ Register Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/metrics", metricRoutes);
-app.use("/api/prices", priceRoutes);
-app.use("/api/salesmen", salesmanRoutes);
-app.use("/api/subagents", subagentRoutes);
-app.use("/api/agents", agentRoutes);
-app.use("/api/bankAccount", bankAccountRoutes);
-app.use("/api/percentages", percentageRoutes);
-app.use("/api/stocks", stockRoutes);
-app.use("/api/shops", shopRoutes);
-app.use("/api/refrigerators", refrigeratorRoutes);
-app.use("/api/agentCommissions", agentCommissionRoutes);
-app.use("/api/subAgentCommissions", subAgentCommissionRoutes);
-app.use("/api/salesmanCommissions", salesmanCommissionRoutes);
-app.use("/api/distributorCommissions", distributorCommissionRoutes);
-app.use("/api/shopCommissions", shopCommissionRoutes);
-app.use("/api/dashboard", dashboardRoutes);
+app.use(`${base}/api/auth`, authRoutes);
+app.use(`${base}/api/user`, userRoutes);
+app.use(`${base}/api/products`, productRoutes);
+app.use(`${base}/api/metrics`, metricRoutes);
+app.use(`${base}/api/prices`, priceRoutes);
+app.use(`${base}/api/salesmen`, salesmanRoutes);
+app.use(`${base}/api/subagents`, subagentRoutes);
+app.use(`${base}/api/agents`, agentRoutes);
+app.use(`${base}/api/bankAccount`, bankAccountRoutes);
+app.use(`${base}/api/percentages`, percentageRoutes);
+app.use(`${base}/api/stocks`, stockRoutes);
+app.use(`${base}/api/shops`, shopRoutes);
+app.use(`${base}/api/refrigerators`, refrigeratorRoutes);
+app.use(`${base}/api/agentCommissions`, agentCommissionRoutes);
+app.use(`${base}/api/subAgentCommissions`, subAgentCommissionRoutes);
+app.use(`${base}/api/salesmanCommissions`, salesmanCommissionRoutes);
+app.use(`${base}/api/distributorCommissions`, distributorCommissionRoutes);
+app.use(`${base}/api/shopCommissions`, shopCommissionRoutes);
+app.use(`${base}/api/dashboard`, dashboardRoutes);
 
 // ✅ Sync Database & Start Server
 const PORT = process.env.PORT || 5000;
