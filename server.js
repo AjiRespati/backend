@@ -46,7 +46,7 @@ app.use(`${base}/api/uploads`, express.static('uploads'));
 
 // ✅ Register Routes
 app.use(`${base}/api/auth`, authRoutes);
-app.use(`${base}/api/user`, userRoutes);
+app.use(`${base}/api/users`, userRoutes);
 app.use(`${base}/api/products`, productRoutes);
 app.use(`${base}/api/metrics`, metricRoutes);
 app.use(`${base}/api/prices`, priceRoutes);
