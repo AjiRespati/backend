@@ -74,8 +74,6 @@ sequelize.sync({ alter: true })
         app.listen(PORT, () => logger.info(`🚀 Server running on port ${PORT}`));
     })
     .catch((err) => {
-        console.log(err);
-        logger.error("❌ Database sync error:");
-        logger.error(err.message);
-        logger.error(err.stack);
+        logger.error(`❌ Database sync error: ${err.stack}`);
+        logger.error(err);
     });

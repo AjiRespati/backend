@@ -15,19 +15,29 @@ exports.createMetric = async (req, res) => {
         const netPrice = price * (100 / supplierPercentage.value);
 
         const metric = await Metric.create({ productId, metricType, updateBy: req.user.username });
+        console.log(metric.id, price, netPrice);
 
-        // ✅ Create Price with netPrice
+        // ✅ Fetch percentage values
+        const percentages = await Percentage.findAll();
+        const percentageMap = {};
+        percentages.forEach(p => { percentageMap[p.key] = p.value; });
+
+        // ✅ Calculate stock values
+        const salesmanPrice = netPrice * ((100 - percentageMap["shop"]) / 100);
+        const subAgentPrice = netPrice * ((100 - percentageMap["shop"]) / 100); // bisa diganti
+        const agentPrice = netPrice * ((100 - percentageMap["shop"] - percentageMap["agent"]) / 100);
+
         await Price.create({
-            metricId: metric.id,
-            price,
-            netPrice,
-            updateBy: req.user.username
+            metricId: metric.id, price, netPrice, salesmanPrice,
+            subAgentPrice, agentPrice, updateBy: req.user.username
         });
 
         logger.info(`Metric created for product: ${productId}`);
         res.status(200).json(metric);
     } catch (error) {
         logger.error(`Metric creation error: ${error.stack}`);
+        logger.error(error);
+
         res.status(500).json({ error: "Metric creation failed" });
     }
 };

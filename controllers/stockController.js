@@ -110,14 +110,14 @@ exports.createStockBatch = async (req, res) => {
             batchRecord.failureCount = 0;
             await batchRecord.save();
             logger.info(`StockBatch ${batchRecord.id} completed successfully.`);
-            res.status(201).json({
+            res.status(200).json({
                 message: "Batch stock creation successful",
                 batchId: batchRecord.id,
                 data: createdStocks
             });
         } catch (updateError) {
             logger.error(`Failed to update StockBatch ${batchRecord.id} status to completed: ${updateError.stack}`);
-            res.status(201).json({ // Stocks were created, but batch status update failed
+            res.status(200).json({ // Stocks were created, but batch status update failed
                 message: "Batch stock creation successful, but failed to update batch status.",
                 batchId: batchRecord.id,
                 data: createdStocks
