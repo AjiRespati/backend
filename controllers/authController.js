@@ -39,7 +39,7 @@ exports.login = async (req, res) => {
         }
 
         // Generate tokens
-        const accessToken = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const accessToken = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '4h' });
         const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
         // Store refresh token in DB
@@ -119,7 +119,7 @@ exports.refreshToken = async (req, res) => {
         jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
             if (err) return res.status(403).json({ message: 'Token expired or invalid' });
 
-            const newAccessToken = jwt.sign({ id: decoded.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const newAccessToken = jwt.sign({ id: decoded.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '4h' });
             res.json({ accessToken: newAccessToken });
         });
     } catch (error) {
