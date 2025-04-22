@@ -161,6 +161,7 @@ exports.getProductById = async (req, res) => {
                     ORDER BY s."createdAt" DESC
                     LIMIT 1
                 ) AS "totalStock",
+                pr.id AS "priceId",
                 pr.price,
                 pr."netPrice",
                 pr."salesmanPrice",
@@ -184,6 +185,7 @@ exports.getProductById = async (req, res) => {
             LEFT JOIN "Metrics" m ON p.id = m."productId"
             LEFT JOIN (
                 SELECT 
+                    id,
                     "metricId",
                     price,
                     "netPrice",
@@ -200,7 +202,7 @@ exports.getProductById = async (req, res) => {
             ) pr ON pr."metricId" = m.id
             WHERE p.id = :productId
             GROUP BY 
-                p.id, m.id, pr.price, pr."netPrice", pr."salesmanPrice", pr."subAgentPrice", pr."agentPrice"
+                p.id, m.id, pr.id, pr.price, pr."netPrice", pr."salesmanPrice", pr."subAgentPrice", pr."agentPrice"
             ORDER BY p."createdAt" DESC;
         `;
 
