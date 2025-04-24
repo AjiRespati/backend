@@ -7,7 +7,8 @@ module.exports = (sequelize, DataTypes) => {
         accountNumber: { type: DataTypes.STRING, allowNull: false },
         accountName: { type: DataTypes.STRING, allowNull: false },
         bankName: { type: DataTypes.STRING, allowNull: false },
-        bankCode: { type: DataTypes.STRING, allowNull: true }
+        bankCode: { type: DataTypes.STRING, allowNull: true },
+        status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
     }, { timestamps: true });
 
     BankAccount.associate = (models) => {

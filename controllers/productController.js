@@ -105,6 +105,7 @@ exports.getAllProducts = async (req, res) => {
                     GROUP BY "metricId"
                 )
             ) pr ON pr."metricId" = m.id
+            WHERE p."status" = 'active'
             GROUP BY 
                 p.id, m.id, pr.price, pr."netPrice"
             ORDER BY p."createdAt" DESC;
@@ -152,6 +153,7 @@ exports.getProductById = async (req, res) => {
                 p.name AS "productName",
                 p.image,
                 p.description,
+                p.status,
                 m.id AS "metricId",
                 m."metricType",
                 (
@@ -219,16 +221,17 @@ exports.getProductById = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const { name, description, updateBy } = req.body;
+        const { name, description, status } = req.body;
         const product = await Product.findByPk(req.params.id);
 
         if (!product) return res.status(404).json({ error: "Product not found" });
 
-        const imagePath = req.file ? `/uploads/${req.file.filename}` : product.image;
+        // const imagePath = req.file ? `/uploads/${req.file.filename}` : product.image;
 
         product.name = name || product.name;
-        product.image = imagePath;
+        // product.image = imagePath;
         product.description = description || product.description;
+        product.status = status || product.status;
         product.updateBy = req.user.username;
 
         await product.save();

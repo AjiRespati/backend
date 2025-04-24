@@ -8,7 +8,8 @@ module.exports = (sequelize, DataTypes) => {
         subAgentPrice: { type: DataTypes.FLOAT, allowNull: false },
         agentPrice: { type: DataTypes.FLOAT, allowNull: false },
         netPrice: { type: DataTypes.FLOAT, allowNull: false },
-        updateBy: { type: DataTypes.STRING }
+        updateBy: { type: DataTypes.STRING },
+        status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
     }, { timestamps: true });
 
     Price.associate = (models) => {

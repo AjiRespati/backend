@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
         image: { type: DataTypes.STRING },
         description: { type: DataTypes.TEXT },
         updateBy: { type: DataTypes.STRING },
+        status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
     }, { timestamps: true });
 
     Product.associate = (models) => {
