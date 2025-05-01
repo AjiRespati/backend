@@ -160,8 +160,11 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
         // return; // Alternative: just skip this one
     }
 
-    const { id, metricId, stockEvent, amount, salesId, subAgentId, agentId } = stockInstance;
-    const totalNetPrice = stockInstance.totalNetPrice; // Use stored net price
+    const {
+        id, metricId, stockEvent, amount, salesId, subAgentId, agentId,
+        totalPrice, totalNetPrice
+    } = stockInstance;
+    // const totalNetPrice = stockInstance.totalNetPrice; // Use stored net price
 
     // --- Calculate stock levels at settlement time ---
     let initialAmountAtSettlement = 0;
@@ -196,22 +199,26 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
     let totalShopShare = null;
 
     if (salesId) {
-        distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
+        distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["salesman"] || 0);
+        // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
         totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalSalesShare = totalNetPrice * (percentageMap["salesman"] || 0) / 100;
     } else if (subAgentId) {
-        distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
+        distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["subAgent"] || 0);
+        // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
         totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] || 0) / 100;
     } else if (agentId) {
-        distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
+        distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["agent"] || 0);
+        // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
         totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalAgentShare = totalNetPrice * (percentageMap["agent"] || 0) / 100;
     } // else: No specific seller type, distributor share remains 0 unless other logic applies
 
     // Calculate shop share if it's a stock_out and there's a relevant seller OR if it always applies
     if (stockEvent === 'stock_out' && (salesId || subAgentId || agentId)) { // Example condition
-        totalShopShare = totalNetPrice * (percentageMap["shop"] || 0) / 100;
+        totalShopShare = totalNetPrice - totalPrice - (totalNetPrice * (percentageMap["distributor"] || 0) / 100);
+        // totalShopShare = totalNetPrice * (percentageMap["shop"] || 0) / 100;
     }
     // --- End Commission Calculation ---
 
