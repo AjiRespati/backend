@@ -67,12 +67,12 @@ exports.createProduct = async (req, res) => {
         // ✅ Create Price with netPrice
         await Price.create({
             metricId: metric.id,
-            price,
-            netPrice,
-            salesmanPrice: shopPrice,
-            subAgentPrice: shopPrice,
+            price: doublePrice,
+            netPrice: doubleNetPrice,
+            salesmanPrice: doubleShopPrice,
+            subAgentPrice: doubleShopPrice,
             agentPrice,
-            shopPrice,
+            shopPrice: doubleShopPrice,
             updateBy: req.user.username
         });
 
