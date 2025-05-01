@@ -5,29 +5,49 @@ const logger = require("../config/logger");
 const path = require("path");
 
 exports.createProduct = async (req, res) => {
-    const { name, description, price, metricType, updateBy } = req.body;
+    const { name, description, price, shopPrice, netPrice, metricType } = req.body;
+    let doublePrice
+    let doubleShopPrice
+    let doubleNetPrice
 
+    try {
+        doublePrice = stringToDouble(price);
+        doubleShopPrice = stringToDouble(shopPrice);
+        doubleNetPrice = stringToDouble(netPrice);
+    } catch (error) {
+        console.error("❌ APA INI:", (error));
+        return res.status(400).json({ error: "Ada komponen harga bukan angka." });
+    }
 
     // ✅ Fetch percentage values
     const percentages = await Percentage.findAll();
     const percentageMap = {};
     percentages.forEach(p => { percentageMap[p.key] = p.value; });
 
+    // ✅ Check all prices values
+    if (doubleShopPrice - doublePrice != ((doubleNetPrice * percentageMap['distributor']) / 100)) {
+        return res.status(400).json({ error: "Ada komponen harga yang tidak sesuai." });
+    }
+
     // ✅ Calculate stock values
-    const netPrice = price * (100 / percentageMap["supplier"]);
-    const salesmanPrice = netPrice * ((100 - percentageMap["shop"]) / 100);
-    const subAgentPrice = netPrice * ((100 - percentageMap["shop"]) / 100); // bisa diganti
-    const agentPrice = netPrice * ((100 - percentageMap["shop"] - percentageMap["agent"]) / 100);
+    // const netPrice = price * (100 / percentageMap["supplier"]);
+    // const salesmanPrice = netPrice * ((100 - percentageMap["shop"]) / 100);
+    // const subAgentPrice = netPrice * ((100 - percentageMap["shop"]) / 100); // bisa diganti
+    // const agentPrice = netPrice * ((100 - percentageMap["shop"] - percentageMap["agent"]) / 100);
+
+    // ✅ Calculate agentPrice values
+    const agentPaidPercentage = (percentageMap['distributor'] - percentageMap['agent']);
+    const agentPrice = (doublePrice + (doubleNetPrice * (agentPaidPercentage / 100)));
 
     try {
-        // ✅ Fetch Supplier Percentage from Percentages Table
-        const supplierPercentage = await Percentage.findOne({ where: { key: "supplier" } });
-        if (!supplierPercentage) {
-            return res.status(500).json({ error: "Supplier percentage not set" });
-        }
+        // // ✅ Fetch Supplier Percentage from Percentages Table
+        // const supplierPercentage = await Percentage.findOne({ where: { key: "supplier" } });
+        // if (!supplierPercentage) {
+        //     return res.status(500).json({ error: "Supplier percentage not set" });
+        // }
 
-        // ✅ Calculate netPrice
-        const netPrice = price * (100 / supplierPercentage.value);
+        // // ✅ Calculate netPrice
+        // const netPrice = price * (100 / supplierPercentage.value);
 
         // ✅ Create Product
         const product = await Product.create({
@@ -46,8 +66,14 @@ exports.createProduct = async (req, res) => {
 
         // ✅ Create Price with netPrice
         await Price.create({
-            metricId: metric.id, price, netPrice, salesmanPrice,
-            subAgentPrice, agentPrice, updateBy: req.user.username
+            metricId: metric.id,
+            price,
+            netPrice,
+            salesmanPrice: shopPrice,
+            subAgentPrice: shopPrice,
+            agentPrice,
+            shopPrice,
+            updateBy: req.user.username
         });
 
         res.status(200).json(product);
@@ -259,3 +285,18 @@ exports.deleteProduct = async (req, res) => {
         res.status(500).json({ error: "Deleting product failed" });
     }
 };
+
+function stringToDouble(str) {
+    // Replace comma with period if needed
+    let normalizedStr = str.replace(',', '.');
+
+    // Convert to number
+    let num = parseFloat(normalizedStr);
+
+    // Check if conversion was successful
+    if (isNaN(num)) {
+        throw new Error(`Cannot convert "${str}" to number`);
+    }
+
+    return num;
+}
