@@ -1,6 +1,11 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Salesman, SubAgent, Agent } = require("../models");
+const {
+    User, Salesman, SubAgent, Agent, Shop,
+    SalesmanCommission, SubAgentCommission, AgentCommission,
+    DistributorCommission, ShopAllCommission,
+    StockBatch, Stock, Price, Metric, Product
+} = require("../models");
 const logger = require('../config/logger');
 
 exports.register = async (req, res) => {
@@ -212,5 +217,99 @@ exports.self = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+
+exports.generic = async (req, res) => {
+    try {
+        const { table } = req.body;
+        if (!table) return res.status(403).json({ message: 'Table required' });
+        switch (table) {
+            case "User":
+                await User.destroy({
+                    truncate: true
+                });
+                break;
+            case "Salesman":
+                await Salesman.destroy({
+                    truncate: true
+                });
+                break;
+            case "SubAgent":
+                await SubAgent.destroy({
+                    truncate: true
+                });
+                break;
+            case "Agent":
+                await Agent.destroy({
+                    truncate: true
+                });
+                break;
+            case "Shop":
+                await Shop.destroy({
+                    truncate: true
+                });
+                break;
+            case "SalesmanCommission":
+                await SalesmanCommission.destroy({
+                    truncate: true
+                });
+                break;
+            case "SubAgentCommission":
+                await SubAgentCommission.destroy({
+                    truncate: true
+                });
+                break;
+            case "AgentCommission":
+                await AgentCommission.destroy({
+                    truncate: true
+                });
+                break;
+            case "DistributorCommission":
+                await DistributorCommission.destroy({
+                    truncate: true
+                });
+                break;
+            case "ShopAllCommission":
+                await ShopAllCommission.destroy({
+                    truncate: true
+                });
+                break;
+            case "StockBatch":
+                await StockBatch.truncate({
+                    cascade: true
+                });
+                break;
+            case "Stock":
+                await Stock.truncate({
+                    cascade: true
+                });
+                break;
+            case "Price":
+                await Price.destroy({
+                    truncate: true
+                });
+                break;
+            case "Metric":
+                await Metric.destroy({
+                    truncate: true
+                });
+                break;
+            case "Product":
+                await Product.truncate({
+                    cascade: true
+                });
+                break;
+            default:
+                break;
+        }
+
+        res.json({ message: `Success remove: ${table}` });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: `Failed removing: ${table}, ${error}` });
     }
 };
