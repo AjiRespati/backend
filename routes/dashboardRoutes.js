@@ -4,7 +4,9 @@ const {
     getAgentDetail,
     getSubAgentDetail,
     getSalesmanDetail,
-    getShopDetail
+    getShopDetail,
+    getComDetailByClient,
+    getClientCommission,
 } = require("../controllers/dashboardController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -16,5 +18,7 @@ router.get("/agentDetail", authMiddleware, getAgentDetail);
 router.get("/subAgentDetail", authMiddleware, getSubAgentDetail);
 router.get("/salesmanDetail", authMiddleware, getSalesmanDetail);
 router.get("/shopDetail", authMiddleware, getShopDetail);
+router.get("/clientDetail", authMiddleware, getClientCommission);
+// router.get("/clientDetail", authMiddleware, getComDetailByClient);
 
 module.exports = router;
