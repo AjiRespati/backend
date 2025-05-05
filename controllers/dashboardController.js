@@ -369,10 +369,10 @@ exports.getClientCommission = async (req, res) => {
             }
         }
 
-        // Add dateFilter to whereClause if it has any conditions
-        if (Object.keys(dateFilter).length > 0) {
-            whereClause.createdAt = dateFilter;
-        }
+        // // Add dateFilter to whereClause if it has any conditions
+        // if (Object.keys(dateFilter).length > 0) {
+        //     whereClause.createdAt = dateFilter;
+        // }
 
         const stockBatches = await StockBatch.findAll({
             attributes: [
@@ -382,6 +382,9 @@ exports.getClientCommission = async (req, res) => {
                 'createdAt',
                 'updatedAt'
             ],
+            where: {
+                'createdAt' : dateFilter,
+            },
             include: [{
                 model: Stock,
                 where: whereClause,
