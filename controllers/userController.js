@@ -197,4 +197,5 @@ const levelDescList = [
     "Agent",
     "Admin",
     "Owner",
+    "Shop"
 ];

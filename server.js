@@ -38,7 +38,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const base = "/service";
 
 app.get(`${base}/`, (req, res) => {
-  res.status(200).json({ message: "Gracia Service API is running!" });
+  res.status(200).json({ message: "Gracia 1.0.20 Service API is running!" });
 });
 
 // ✅ Serve Static Files (Fix the Image Error)
