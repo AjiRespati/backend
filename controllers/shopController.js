@@ -69,12 +69,13 @@ exports.getAllShops = async (req, res) => {
 
 
 exports.getAllShopsBySales = async (req, res) => {
+    const { id } = req.params;
+    console.log("✅ id: ", JSON.stringify(id));
     try {
-        const { salesId } = req.params;
         let shops = [];
         const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description'];
         const salesmanShops = await Shop.findAll({
-            where: { salesId },
+            where: { salesId: id },
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association
@@ -82,14 +83,14 @@ exports.getAllShopsBySales = async (req, res) => {
             }],
         });
         const subAgentShops = await Shop.findAll({
-            where: { subAgentId: salesId },
+            where: { subAgentId: id },
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association
             }],
         });
         const agentShops = await Shop.findAll({
-            where: { agentId: salesId },
+            where: { agentId: id },
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association

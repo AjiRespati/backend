@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post("/", authMiddleware, createShop);
 router.get("/", authMiddleware, getAllShops);
-router.get("/:salesId", authMiddleware, getAllShopsBySales);
+router.get("/:id", authMiddleware, getAllShopsBySales);
 router.put("/:id", authMiddleware, updateShop);
 
 module.exports = router;
