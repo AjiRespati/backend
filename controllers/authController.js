@@ -221,6 +221,24 @@ exports.self = async (req, res) => {
 };
 
 
+exports.changePassword = async (req, res) => {
+    try {
+        const { newPass } = req.body;
+
+        console.log("✅ User: ", JSON.stringify(req.user))
+
+        const user = await User.findByPk(req.user.id);
+        const hashedPassword = await bcrypt.hash(newPass, 10);
+
+        user.password = hashedPassword;
+        await user.save();
+        res.json("success");
+    } catch (err) {
+        
+    }
+};
+
+
 
 exports.generic = async (req, res) => {
     try {

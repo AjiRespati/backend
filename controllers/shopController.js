@@ -1,13 +1,38 @@
-const { Shop, Refrigerator, Salesman, SubAgent, Agent } = require("../models");
+const bcrypt = require('bcryptjs');
+
+const {
+    Shop, Refrigerator, Salesman, SubAgent, Agent, User,
+} = require("../models");
 const logger = require("../config/logger");
 
 exports.createShop = async (req, res) => {
     try {
         const { name, image, address, coordinates, phone, email, salesId, subAgentId, agentId } = req.body;
+
+        // 1. Create Shop User 
+        const existingUser = await User.findOne({ where: { username: email } });
+        if (existingUser) return res.status(400).json({ message: 'Shop Email/Username already exists' });
+
+        const password = "gracia123";
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await User.create({
+            username: email,
+            password: hashedPassword,
+            name,
+            email,
+            phone,
+            address,
+            level: 6,
+            createBy: req.user.username
+        });
+
+
+        // 2. Create Shop
         logger.info(`Shop : ${JSON.stringify(req.body)}`);
         const shop = await Shop.create({
             name, image, address, coordinates, phone, email,
-            salesId, subAgentId, agentId, updateBy: req.user.username
+            salesId, subAgentId, agentId, createBy: req.user.username
         });
 
         logger.info(`Shop created: ${shop.name}`);
