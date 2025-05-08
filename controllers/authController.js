@@ -166,6 +166,7 @@ exports.self = async (req, res) => {
         let salesId = null;
         let subAgentId = null;
         let agentId = null;
+        let shopId = null;
 
         switch (user.level) {
             case 1:
@@ -195,6 +196,15 @@ exports.self = async (req, res) => {
                 agentId = existingAgent.id;
 
                 break;
+            case 6:
+                const existingShop = await Shop.findOne({
+                    where: { email: user.email }
+                })
+                if (!existingShop) return res.status(404).json({ error: 'shop not found' });
+
+                shopId = existingShop.id;
+
+                break;
 
             default:
                 break;
@@ -212,6 +222,7 @@ exports.self = async (req, res) => {
             salesId: salesId,
             subAgentId: subAgentId,
             agentId: agentId,
+            shopId: shopId,
             levelDesc: user.levelDesc,
         });
     } catch (error) {
@@ -234,12 +245,12 @@ exports.changePassword = async (req, res) => {
         await user.save();
         res.json("success");
     } catch (err) {
-        
+
     }
 };
 
 
-
+// Ini Untuk Hapus DB
 exports.generic = async (req, res) => {
     try {
         const { table } = req.body;

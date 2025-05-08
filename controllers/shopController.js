@@ -24,6 +24,8 @@ exports.createShop = async (req, res) => {
             phone,
             address,
             level: 6,
+            levelDesc: "Shop",
+            status: "active",
             createBy: req.user.username
         });
 
