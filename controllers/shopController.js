@@ -97,7 +97,6 @@ exports.getAllShops = async (req, res) => {
 
 exports.getAllShopsBySales = async (req, res) => {
     const { id } = req.params;
-    console.log("✅ id: ", JSON.stringify(id));
     try {
         let shops = [];
         const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description'];

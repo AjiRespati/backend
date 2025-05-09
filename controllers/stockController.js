@@ -360,6 +360,11 @@ exports.getStockBatches = async (req, res) => {
         const limit = parseInt(req.query.limit, 10) || 10;
         const offset = (page - 1) * limit;
         let shopBatchCreator = "";
+        let listCreator = [];
+
+        if (req.query.shopList) {
+            req.query.shopList.split(",").map(item => listCreator.push(item.trim()));
+        }
 
         if (req.query.level == 6) {
             switch (req.query.parentType) {
@@ -378,6 +383,9 @@ exports.getStockBatches = async (req, res) => {
             }
         }
 
+
+        console.log("✅ shoplist: ", listCreator);
+
         // --- Filtering ---
         const whereClause = {};
         const stockWhereClause = {};
@@ -388,8 +396,10 @@ exports.getStockBatches = async (req, res) => {
             whereClause.status = 'completed'; // Default filter
         }
         if (req.query.createdBy) {
+            listCreator.push(req.query.createdBy);
             whereClause.createdBy = {
-                [Op.or]: [req.query.createdBy, shopBatchCreator]
+                [Op.or]: listCreator
+                // [Op.or]: [req.query.createdBy, shopBatchCreator]
             }
             // whereClause.createdBy = req.query.createdBy;
         }
@@ -401,9 +411,6 @@ exports.getStockBatches = async (req, res) => {
             whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
         } else if (req.query.endDate) {
             whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
-        }
-        if (req.query.shopId) {
-            stockWhereClause.shopId = req.query.shopId;
         }
 
 
