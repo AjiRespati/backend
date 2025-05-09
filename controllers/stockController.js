@@ -3,7 +3,9 @@ const sequelize = db.sequelize;
 const Sequelize = db.Sequelize;
 const { Op } = Sequelize;
 const { Stock, Metric, Price, Percentage, SalesmanCommission, SubAgentCommission,
-    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch, Product, User } = require("../models");
+    AgentCommission, DistributorCommission, ShopAllCommission, StockBatch, Product,
+    User, Salesman, SubAgent, Agent
+} = require("../models");
 const logger = require("../config/logger");
 
 
@@ -357,9 +359,28 @@ exports.getStockBatches = async (req, res) => {
         const page = parseInt(req.query.page, 10) || 1;
         const limit = parseInt(req.query.limit, 10) || 10;
         const offset = (page - 1) * limit;
+        let shopBatchCreator = "";
+
+        if (req.query.level == 6) {
+            switch (req.query.parentType) {
+                case 'sales':
+                    const sales = await Salesman.findByPk(req.query.parentId);
+                    shopBatchCreator = sales.email;
+                    break;
+                case 'subAgent':
+                    const subAgent = await SubAgent.findByPk(req.query.parentId);
+                    shopBatchCreator = subAgent.email;
+                    break;
+                default:
+                    const agent = await Agent.findByPk(req.query.parentId);
+                    shopBatchCreator = agent.email;
+                    break;
+            }
+        }
 
         // --- Filtering ---
         const whereClause = {};
+        const stockWhereClause = {};
         // (Filtering logic remains the same as before)
         if (req.query.status && req.query.status !== 'all') {
             whereClause.status = req.query.status;
@@ -367,7 +388,10 @@ exports.getStockBatches = async (req, res) => {
             whereClause.status = 'completed'; // Default filter
         }
         if (req.query.createdBy) {
-            whereClause.createdBy = req.query.createdBy;
+            whereClause.createdBy = {
+                [Op.or]: [req.query.createdBy, shopBatchCreator]
+            }
+            // whereClause.createdBy = req.query.createdBy;
         }
         if (req.query.startDate && req.query.endDate) {
             whereClause.createdAt = {
@@ -377,6 +401,9 @@ exports.getStockBatches = async (req, res) => {
             whereClause.createdAt = { [Op.gte]: new Date(req.query.startDate) };
         } else if (req.query.endDate) {
             whereClause.createdAt = { [Op.lte]: new Date(req.query.endDate) };
+        }
+        if (req.query.shopId) {
+            stockWhereClause.shopId = req.query.shopId;
         }
 
 
@@ -408,7 +435,8 @@ exports.getStockBatches = async (req, res) => {
                         'subAgentPrice',
                         'agentPrice'
                     ],
-                    required: false,
+                    where: stockWhereClause,
+                    required: true,
                     include: [
                         {
                             model: Metric,

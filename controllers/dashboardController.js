@@ -322,26 +322,43 @@ exports.getClientCommission = async (req, res) => {
             'updatedAt',
         ];
 
+        let salesId;
+        let subAgentId;
+        let agentId;
+
+        // if (clientType === "shop") {
+        //     const _shop = await Shop.findByPk(id);
+        //     if (_shop.salesId) {
+        //         salesId = _shop.salesId
+
+        //     }
+        // }
+
         // --- 1. Build the WHERE clause ---
         const whereClause = {};
-        let modelClause;
 
         switch (clientType) {
             case 'salesman':
                 whereClause.salesId = id;
-                modelClause = SalesmanCommission;
                 break;
             case 'subAgent':
                 whereClause.subAgentId = id;
-                modelClause = SubAgentCommission;
                 break;
             case 'agent':
                 whereClause.agentId = id;
-                modelClause = AgentCommission;
                 break;
             case 'shop':
+                const _shop = await Shop.findByPk(id);
+                if (_shop.salesId) {
+                    whereClause.salesId = _shop.salesId
+                }
+                if (_shop.subAgentId) {
+                    whereClause.subAgentId = _shop.subAgentId
+                }
+                if (_shop.agentId) {
+                    whereClause.agentId = _shop.agentId
+                }
                 whereClause.shopId = id;
-                modelClause = ShopCommission;
                 break;
             default:
                 break;
@@ -369,10 +386,6 @@ exports.getClientCommission = async (req, res) => {
             }
         }
 
-        // // Add dateFilter to whereClause if it has any conditions
-        // if (Object.keys(dateFilter).length > 0) {
-        //     whereClause.createdAt = dateFilter;
-        // }
 
         const stockBatches = await StockBatch.findAll({
             attributes: [
@@ -383,7 +396,7 @@ exports.getClientCommission = async (req, res) => {
                 'updatedAt'
             ],
             where: {
-                'createdAt' : dateFilter,
+                'createdAt': dateFilter,
             },
             include: [{
                 model: Stock,

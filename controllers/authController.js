@@ -203,6 +203,9 @@ exports.self = async (req, res) => {
                 if (!existingShop) return res.status(404).json({ error: 'shop not found' });
 
                 shopId = existingShop.id;
+                salesId = existingShop.salesId;
+                subAgentId = existingShop.subAgentId;
+                agentId = existingShop.agentId;
 
                 break;
 
