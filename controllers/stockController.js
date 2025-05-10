@@ -747,7 +747,7 @@ exports.stockListByProduct = async (req, res) => {
 exports.stockListBySales = async (req, res) => {
     try {
         const { salesId } = req.params;
-        const stocks = await Stock.findAll({ where: { salesId } });
+        const stocks = await Stock.findAll({ where: { salesId, status: 'settled'  } });
 
         res.json(stocks);
     } catch (error) {
@@ -760,7 +760,7 @@ exports.stockListBySales = async (req, res) => {
 exports.stockListBySubAgent = async (req, res) => {
     try {
         const { subAgentId } = req.params;
-        const stocks = await Stock.findAll({ where: { subAgentId } });
+        const stocks = await Stock.findAll({ where: { subAgentId, status: 'settled' } });
 
         res.json(stocks);
     } catch (error) {
@@ -773,7 +773,7 @@ exports.stockListBySubAgent = async (req, res) => {
 exports.stockListByAgent = async (req, res) => {
     try {
         const { agentId } = req.params;
-        const stocks = await Stock.findAll({ where: { agentId } });
+        const stocks = await Stock.findAll({ where: { agentId, status: 'settled' } });
 
         res.json(stocks);
     } catch (error) {
@@ -1295,6 +1295,7 @@ exports.getTableBySalesId = async (req, res) => {
             --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
             --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
             WHERE s."salesId" = :salesId
+            AND s."status" = 'settled'
             AND s."createdAt" BETWEEN :fromDate AND :toDate
             ORDER BY s."createdAt" DESC
         `;
@@ -1353,6 +1354,7 @@ exports.getTableBySubAgentId = async (req, res) => {
             --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
             --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
             WHERE s."subAgentId" = :subAgentId
+            AND s."status" = 'settled'
             AND s."createdAt" BETWEEN :fromDate AND :toDate
             ORDER BY s."createdAt" DESC
         `;
@@ -1411,6 +1413,7 @@ exports.getTableByAgentId = async (req, res) => {
             --  LEFT JOIN "SalesmanCommissions" sc ON s.id = sc."stockId"
             --  LEFT JOIN "ShopAllCommissions" sac ON s.id = sac."stockId"
             WHERE s."agentId" = :agentId
+            AND s."status" = 'settled'
             AND s."createdAt" BETWEEN :fromDate AND :toDate
             ORDER BY s."createdAt" DESC
         `;
