@@ -29,6 +29,7 @@ async function _internalCreateSingleStock(itemData, transaction, username, batch
     const salesmanPrice = salesId ? amount * latestPrice.salesmanPrice : 0;
     const subAgentPrice = subAgentId ? amount * latestPrice.subAgentPrice : 0;
     const agentPrice = agentId ? amount * latestPrice.agentPrice : 0;
+    const shopPrice = shopId ? amount * latestPrice.shopPrice : 0;
 
     const stock = await Stock.create({
         metricId,
@@ -41,6 +42,7 @@ async function _internalCreateSingleStock(itemData, transaction, username, batch
         salesmanPrice,      // Store price context
         subAgentPrice,      // Store price context
         agentPrice,         // Store price context
+        shopPrice,         // Store price context
         totalDistributorShare: 0, // Calculated at settlement
         totalSalesShare: 0,       // Calculated at settlement
         totalSubAgentShare: 0,    // Calculated at settlement
@@ -396,10 +398,15 @@ exports.getStockBatches = async (req, res) => {
             whereClause.status = 'completed'; // Default filter
         }
         if (req.query.createdBy) {
-            listCreator.push(req.query.createdBy);
-            whereClause.createdBy = {
-                [Op.or]: listCreator
-                // [Op.or]: [req.query.createdBy, shopBatchCreator]
+            if (req.query.level == 6) {
+                whereClause.createdBy = {
+                    [Op.or]: [req.query.createdBy, shopBatchCreator]
+                }
+            } else {
+                listCreator.push(req.query.createdBy);
+                whereClause.createdBy = {
+                    [Op.or]: listCreator
+                }
             }
             // whereClause.createdBy = req.query.createdBy;
         }
@@ -440,7 +447,8 @@ exports.getStockBatches = async (req, res) => {
                         'totalNetPrice', // Make sure this exists in your Stock model/DB
                         'salesmanPrice',
                         'subAgentPrice',
-                        'agentPrice'
+                        'agentPrice',
+                        'shopPrice'
                     ],
                     where: stockWhereClause,
                     required: true,
@@ -484,6 +492,7 @@ exports.getStockBatches = async (req, res) => {
                         salesmanPrice: stock.salesmanPrice,
                         subAgentPrice: stock.subAgentPrice,
                         agentPrice: stock.agentPrice,
+                        shopPrice: stock.shopPrice,
                         // Add other stock fields as needed
                     };
 

@@ -195,6 +195,7 @@ exports.getProductById = async (req, res) => {
                 pr."salesmanPrice",
                 pr."subAgentPrice",
                 pr."agentPrice",
+                pr."shopPrice",
                 (
                     SELECT s."createdAt"
                     FROM "Stocks" s
@@ -220,6 +221,7 @@ exports.getProductById = async (req, res) => {
                     "salesmanPrice",
                     "subAgentPrice",
                     "agentPrice",
+                    "shopPrice",
                     "createdAt"
                 FROM "Prices"
                 WHERE "createdAt" IN (
@@ -230,7 +232,7 @@ exports.getProductById = async (req, res) => {
             ) pr ON pr."metricId" = m.id
             WHERE p.id = :productId
             GROUP BY 
-                p.id, m.id, pr.id, pr.price, pr."netPrice", pr."salesmanPrice", pr."subAgentPrice", pr."agentPrice"
+                p.id, m.id, pr.id, pr.price, pr."netPrice", pr."salesmanPrice", pr."subAgentPrice", pr."agentPrice", pr."shopPrice"
             ORDER BY p."createdAt" DESC;
         `;
 

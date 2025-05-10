@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
         salesmanPrice: { type: DataTypes.FLOAT, allowNull: false },
         subAgentPrice: { type: DataTypes.FLOAT, allowNull: false },
         agentPrice: { type: DataTypes.FLOAT, allowNull: false },
+        shopPrice: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
         totalNetPrice: { type: DataTypes.FLOAT, allowNull: false },
         totalDistributorShare: { type: DataTypes.FLOAT, allowNull: false },
         totalSalesShare: { type: DataTypes.FLOAT, allowNull: true },
