@@ -81,6 +81,29 @@ exports.createStockBatch = async (req, res) => {
 
     // 1. Create StockBatch Record (outside main transaction)
     try {
+
+        // console.log("✅ transactions: ", transactions);
+        // console.log("✅ transactions: ", transactions[0].parentId);
+        // console.log("✅ transactions: ", transactions[0].parentType);
+
+        let parentEmail;
+        switch (transactions[0].parentType) {
+            case "sales":
+                const sales = await Salesman.findByPk(transactions[0].parentId);
+                parentEmail = sales.email;
+                break;
+            case "subAgent":
+                const subAgent = await SubAgent.findByPk(transactions[0].parentId);
+                parentEmail = subAgent.email;
+                break;
+            case "agent":
+                const agent = await Agent.findByPk(transactions[0].parentId);
+                parentEmail = agent.email;
+                break;
+            default:
+                break;
+        }
+
         batchRecord = await StockBatch.create({
             batchType: 'stock_creation',
             status: 'processing',
@@ -88,6 +111,9 @@ exports.createStockBatch = async (req, res) => {
             createdBy: username,
             creatorId: userId,
             userDesc: userDesc,
+            parentId: transactions[0].parentId,
+            parentType: transactions[0].parentType,
+            parentEmail: parentEmail
         });
     } catch (batchError) {
         logger.error(`Failed to create initial StockBatch record: ${batchError.stack}`);
@@ -117,7 +143,7 @@ exports.createStockBatch = async (req, res) => {
             res.status(200).json({
                 message: "Batch stock creation successful",
                 batchId: batchRecord.id,
-                data: createdStocks
+                data: true
             });
         } catch (updateError) {
             logger.error(`Failed to update StockBatch ${batchRecord.id} status to completed: ${updateError.stack}`);
@@ -378,15 +404,15 @@ exports.getStockBatches = async (req, res) => {
                     const subAgent = await SubAgent.findByPk(req.query.parentId);
                     shopBatchCreator = subAgent.email;
                     break;
-                default:
+                case 'agent':
                     const agent = await Agent.findByPk(req.query.parentId);
                     shopBatchCreator = agent.email;
+                    break;
+                default:
                     break;
             }
         }
 
-
-        console.log("✅ shoplist: ", listCreator);
 
         // --- Filtering ---
         const whereClause = {};

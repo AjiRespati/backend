@@ -34,6 +34,18 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
+        parentType: { // User who initiated the batch
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        parentId: { // User who initiated the batch
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        parentEmail: { // User who initiated the batch
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
         // --- Optional: Add canceledBy field ---
         canceledBy: {
             type: DataTypes.STRING,
