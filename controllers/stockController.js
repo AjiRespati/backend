@@ -429,8 +429,8 @@ exports.getStockBatches = async (req, res) => {
         // --- Fetch Data with Count and Nested Includes ---
         const { count, rows: rawBatches } = await StockBatch.findAndCountAll({ // Renamed rows to rawBatches
             where: whereClause,
-            limit: limit,
-            offset: offset,
+            // limit: limit,
+            // offset: offset,
             order: order,
             distinct: true,
             include: [
@@ -1164,6 +1164,7 @@ exports.getStockResume = async (req, res) => {
 
     try {
         let whereClause = {
+            status: "settled",
             createdAt: {
                 [Op.between]: [new Date(fromDate), new Date(toDate)]
             }
@@ -1433,6 +1434,7 @@ exports.getTableByShopId = async (req, res) => {
             LEFT JOIN "Products" p ON m."productId" = p.id
             LEFT JOIN "Shops" sh ON s."shopId" = sh.id
             WHERE s."shopId" = :shopId
+            AND s."status" = 'settled'
             AND s."createdAt" BETWEEN :fromDate AND :toDate
             ORDER BY s."createdAt" DESC
         `;

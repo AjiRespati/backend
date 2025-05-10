@@ -322,9 +322,9 @@ exports.getClientCommission = async (req, res) => {
             'updatedAt',
         ];
 
-        let salesId;
-        let subAgentId;
-        let agentId;
+        // let salesId;
+        // let subAgentId;
+        // let agentId;
 
         // if (clientType === "shop") {
         //     const _shop = await Shop.findByPk(id);
@@ -397,6 +397,7 @@ exports.getClientCommission = async (req, res) => {
             ],
             where: {
                 'createdAt': dateFilter,
+                'status': 'settled'
             },
             include: [{
                 model: Stock,
