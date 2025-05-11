@@ -8,6 +8,8 @@ const { sequelize } = require("./models");
 
 const app = express();
 
+const version = "1.1.0";
+
 // ✅ Middlewares
 app.use(cors());
 app.use(helmet());
@@ -38,7 +40,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const base = "/service";
 
 app.get(`${base}/`, (req, res) => {
-  res.status(200).json({ message: "Gracia 1.0.20 Service API is running!" });
+    res.status(200).json({ message: `✅ Gracia ${version} Service API is running!` });
 });
 
 // ✅ Serve Static Files (Fix the Image Error)
