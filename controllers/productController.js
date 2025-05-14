@@ -25,7 +25,7 @@ exports.createProduct = async (req, res) => {
     percentages.forEach(p => { percentageMap[p.key] = p.value; });
 
     // ✅ Check all prices values
-    if (doubleShopPrice - doublePrice != ((doubleNetPrice * percentageMap['distributor']) / 100)) {
+    if (doubleShopPrice - doublePrice < ((doubleNetPrice * percentageMap['distributor']) / 100)) {
         return res.status(400).json({ error: "Ada komponen harga yang tidak sesuai." });
     }
 
