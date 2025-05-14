@@ -8,6 +8,7 @@ const { sequelize } = require("./models");
 
 const app = express();
 
+//TODO: Versioning
 const version = "1.1.0";
 
 // ✅ Middlewares

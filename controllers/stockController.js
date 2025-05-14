@@ -192,7 +192,7 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
 
     const {
         id, metricId, stockEvent, amount, salesId, subAgentId, agentId,
-        totalPrice, totalNetPrice
+        totalPrice, totalNetPrice, shopPrice
     } = stockInstance;
     // const totalNetPrice = stockInstance.totalNetPrice; // Use stored net price
 
@@ -223,35 +223,44 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
     percentages.forEach(p => { percentageMap[p.key] = p.value; });
     let distributorPercentage = 0;
     let totalDistributorShare = 0;
-    let totalSalesShare = null;
-    let totalSubAgentShare = null;
-    let totalAgentShare = null;
-    let totalShopShare = null;
+    let totalSalesShare = 0;
+    let totalSubAgentShare = 0;
+    let totalAgentShare = 0;
+    let totalShopShare = 0;
 
     if (salesId) {
         distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["salesman"] || 0);
         // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
-        totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalSalesShare = totalNetPrice * (percentageMap["salesman"] || 0) / 100;
+        // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        totalDistributorShare = totalNetPrice - totalPrice - totalSalesShare;
     } else if (subAgentId) {
         distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["subAgent"] || 0);
         // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
-        totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] || 0) / 100;
+        // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        totalDistributorShare = totalNetPrice - totalPrice - totalSubAgentShare;
     } else if (agentId) {
         distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["agent"] || 0);
         // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
-        totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalAgentShare = totalNetPrice * (percentageMap["agent"] || 0) / 100;
+        // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        totalDistributorShare = totalNetPrice - totalPrice - totalAgentShare;
     } // else: No specific seller type, distributor share remains 0 unless other logic applies
 
     // Calculate shop share if it's a stock_out and there's a relevant seller OR if it always applies
     if (stockEvent === 'stock_out' && (salesId || subAgentId || agentId)) { // Example condition
-        totalShopShare = totalNetPrice - totalPrice - (totalNetPrice * (percentageMap["distributor"] || 0) / 100);
+        totalShopShare = totalNetPrice - shopPrice;
+        // totalShopShare = totalNetPrice - totalPrice - (totalNetPrice * (percentageMap["distributor"] || 0) / 100);
         // totalShopShare = totalNetPrice * (percentageMap["shop"] || 0) / 100;
     }
     // --- End Commission Calculation ---
-
+    logger.info(`✅ totalNetPrice: ${totalNetPrice}`);
+    logger.info(`✅ shopPrice: ${shopPrice}`);
+    logger.info(`✅ totalPrice: ${totalPrice}`);
+    logger.info(`✅ totalShopShare: ${totalShopShare}`);
+    logger.info(`✅ totalSubAgentShare: ${totalSubAgentShare}`);
+    logger.info(`✅ totalDistributorShare: ${totalDistributorShare}`);
 
     // --- Update Stock Instance ---
     stockInstance.status = "settled";
@@ -747,7 +756,7 @@ exports.stockListByProduct = async (req, res) => {
 exports.stockListBySales = async (req, res) => {
     try {
         const { salesId } = req.params;
-        const stocks = await Stock.findAll({ where: { salesId, status: 'settled'  } });
+        const stocks = await Stock.findAll({ where: { salesId, status: 'settled' } });
 
         res.json(stocks);
     } catch (error) {
