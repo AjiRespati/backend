@@ -8,7 +8,8 @@ const { sequelize } = require("./models");
 
 const app = express();
 
-const version = "1.1.0";
+//TODO: MAIN VERSION 
+const version = "1.1.1";
 
 // ✅ Middlewares
 app.use(cors());
