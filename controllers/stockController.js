@@ -794,7 +794,7 @@ exports.stockListByAgent = async (req, res) => {
 
 exports.getStockHistory = async (req, res) => {
     const { metricId, fromDate, toDate, status } = req.query;
-
+console.log("BENER KESONI KAN...????")
     try {
         const query = `
             SELECT 
@@ -802,6 +802,7 @@ exports.getStockHistory = async (req, res) => {
                 p."name" AS "productName",
                 m."metricType" AS "measurement", 
                 s."createdAt",
+                s."updatedAt",
                 s."stockEvent",
                 s."initialAmount",
                 s."amount",
@@ -839,7 +840,7 @@ exports.getStockHistory = async (req, res) => {
                 AND (:fromDate IS NULL OR s."createdAt" >= :fromDate)
                 AND (:toDate IS NULL OR s."createdAt" <= :toDate)
                 AND (s."status" = :status)
-            ORDER BY s."createdAt" DESC;
+            ORDER BY s."updatedAt" DESC;
         `;
 
         const [results] = await sequelize.query(query, {
