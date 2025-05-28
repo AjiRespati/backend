@@ -9,7 +9,7 @@ const { sequelize } = require("./models");
 const app = express();
 
 //TODO: Versioning
-const version = "1.1.2";
+const version = "1.1.2+1";
 
 // ✅ Middlewares
 app.use(cors());
@@ -74,7 +74,7 @@ const PORT = process.env.PORT || 5000;
 sequelize.sync({ alter: true })
     .then(() => {
         logger.info("✅ Database synchronized successfully.");
-        app.listen(PORT, () => logger.info(`🚀 Server running on port ${PORT}`));
+        app.listen(PORT, () => logger.info(`🚀 Server ${version} running on port ${PORT}`));
     })
     .catch((err) => {
         logger.error(`❌ Database sync error: ${err.stack}`);
