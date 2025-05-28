@@ -882,14 +882,14 @@ exports.getStockTable = async (req, res) => {
                     SELECT s2."createdAt"
                     FROM "Stocks" s2
                     WHERE s2."metricId" = m.id
-                    ORDER BY s2."createdAt" DESC
+                    ORDER BY s2."updatedAt" DESC
                     LIMIT 1
                 ) AS "lastStockUpdate",
                 (
                     SELECT s3."updateAmount"
                     FROM "Stocks" s3
                     WHERE s3."metricId" = m.id AND s3."status" = 'settled'
-                    ORDER BY s3."createdAt" DESC
+                    ORDER BY s3."updatedAt" DESC
                     LIMIT 1
                 ) AS "latestUpdateAmount"
             FROM "Stocks" s
