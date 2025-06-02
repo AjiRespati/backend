@@ -6,14 +6,26 @@ const path = require("path");
 
 exports.createProduct = async (req, res) => {
     const { name, description, price, shopPrice, netPrice, metricType } = req.body;
+    /**
+        Harga jual pabrik
+    */
     let doublePrice
+
+    /**
+        Harga jual distributor 
+    */
     let doubleShopPrice
+
+    /**
+        Harga jual toko 
+    */
     let doubleNetPrice
 
     try {
         doublePrice = stringToDouble(price);
         doubleShopPrice = stringToDouble(shopPrice);
         doubleNetPrice = stringToDouble(netPrice);
+
     } catch (error) {
         console.error("❌ APA INI:", (error));
         return res.status(400).json({ error: "Ada komponen harga bukan angka." });
@@ -36,8 +48,13 @@ exports.createProduct = async (req, res) => {
     // const agentPrice = netPrice * ((100 - percentageMap["shop"] - percentageMap["agent"]) / 100);
 
     // ✅ Calculate agentPrice values
-    const agentPaidPercentage = (percentageMap['distributor'] - percentageMap['agent']);
-    const agentPrice = (doublePrice + (doubleNetPrice * (agentPaidPercentage / 100)));
+    const agentPriceCommission = doubleShopPrice * (percentageMap['agent'] / 100);
+    const agentPrice = doubleShopPrice - agentPriceCommission;
+
+    // const agentPaidPercentage = (percentageMap['distributor'] - percentageMap['agent']);
+    // const agentPrice = (doublePrice + (doubleNetPrice * (agentPaidPercentage / 100)));
+
+
 
     try {
         // // ✅ Fetch Supplier Percentage from Percentages Table
