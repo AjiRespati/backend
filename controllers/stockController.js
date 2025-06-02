@@ -192,7 +192,7 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
 
     const {
         id, metricId, stockEvent, amount, salesId, subAgentId, agentId,
-        totalPrice, totalNetPrice, shopPrice
+        totalPrice, shopPrice, totalNetPrice
     } = stockInstance;
     // const totalNetPrice = stockInstance.totalNetPrice; // Use stored net price
 
@@ -238,19 +238,19 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
     if (salesId) {
         distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["salesman"] || 0);
         // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
-        totalSalesShare = totalNetPrice * (percentageMap["salesman"] || 0) / 100;
+        totalSalesShare = shopPrice * (percentageMap["salesman"] || 0) / 100;
         // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalDistributorShare = totalNetPrice - totalPrice - totalSalesShare - totalShopShare;
     } else if (subAgentId) {
         distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["subAgent"] || 0);
         // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
-        totalSubAgentShare = totalNetPrice * (percentageMap["subAgent"] || 0) / 100;
+        totalSubAgentShare = shopPrice * (percentageMap["subAgent"] || 0) / 100;
         // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalDistributorShare = totalNetPrice - totalPrice - totalSubAgentShare - totalShopShare;
     } else if (agentId) {
         distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["agent"] || 0);
         // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
-        totalAgentShare = totalNetPrice * (percentageMap["agent"] || 0) / 100;
+        totalAgentShare = shopPrice * (percentageMap["agent"] || 0) / 100;
         // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
         totalDistributorShare = totalNetPrice - totalPrice - totalAgentShare - totalShopShare;
     } // else: No specific seller type, distributor share remains 0 unless other logic applies
