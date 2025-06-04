@@ -158,3 +158,44 @@ WHERE id = 'e24b2317-d2b9-4572-bed5-d85a16c066da';
 UPDATE "public"."Stocks"
 SET "totalDistributorShare" = 000
 WHERE id = '';
+
+
+--------------------
+-- Reset Password --
+--------------------
+
+
+
+UPDATE "public"."Users"
+SET "password" = '$2a$10$TIOGSpLK4KEq5Cm9wGecm.vFCqvf9LEDgotDCdYAfq98Q.AFUxJ2q'
+WHERE id = 'bff2582e-dcc5-4f5d-8641-0be73f714d66';
+
+
+
+---------------------
+-- FIX EMAIL SALES --
+---------------------
+
+
+UPDATE "public"."Salesmans"
+SET "email" = '-',
+"name" = '-',
+"phone" = '-',
+"status" = 'inactive'
+WHERE id = '82db67c6-d023-49e8-a8d0-ecfc05d8b6b8';
+
+UPDATE "public"."Users"
+SET "email" = '-',
+"name" = '-',
+"phone" = '-',
+"username" = '-'
+WHERE id = 'bff2582e-dcc5-4f5d-8641-0be73f714d66';
+
+
+
+DELETE FROM "public"."Salesmans"
+WHERE id = '82db67c6-d023-49e8-a8d0-ecfc05d8b6b8';
+
+DELETE FROM "public"."Users"
+WHERE id = 'bff2582e-dcc5-4f5d-8641-0be73f714d66';
+

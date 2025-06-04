@@ -1,4 +1,7 @@
-const { User, Salesman, SubAgent, Agent } = require('../models');
+const { User, Salesman, SubAgent, Agent, Shop } = require('../models');
+const db = require("../models");
+const sequelize = db.sequelize;
+
 const logger = require('../config/logger');
 
 exports.getAllUsers = async (req, res) => {
@@ -40,126 +43,79 @@ exports.createUser = async (req, res) => {
 };
 
 exports.updateUser = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { id } = req.params;
         const { level, status } = req.body;
 
-        // 1. find user by id
-        const existingUser = await User.findByPk(id);
+        const existingUser = await User.findByPk(id, { transaction: t });
         if (!existingUser) return res.status(404).json({ error: 'user not found' });
 
         const { name, image, address, phone, email } = existingUser;
 
-        existingUser.level = level || existingUser.level;
-        existingUser.status = status || existingUser.status;
+        existingUser.level = level ?? existingUser.level;
+        existingUser.status = status ?? existingUser.status;
 
-        // 2. Find if already sign as Salesman
-        const existingSales = await Salesman.findOne({
-            where: { email }
-        })
+        const existingSales = await Salesman.findOne({ where: { email }, transaction: t });
+        const existingSubAgent = await SubAgent.findOne({ where: { email }, transaction: t });
+        const existingAgent = await Agent.findOne({ where: { email }, transaction: t });
 
-        // 3. Find if already sign as SubAgent
-        const existingSubAgent = await SubAgent.findOne({
-            where: { email }
-        })
-
-        // 2. Find if already sign as Agent
-        const existingAgent = await Agent.findOne({
-            where: { email }
-        })
-
-        // If process is update level
         if (level !== null && level !== undefined) {
-
-            // update level decription
             existingUser.levelDesc = levelDescList[level];
 
             switch (level) {
-                // if update to Salesman
                 case 1:
                     if (existingSubAgent) {
-                        existingSubAgent.status = "inactive"
-                        await existingSubAgent.save();
-                        // await SubAgent.destroy({
-                        //     where: { email }
-                        // });
+                        existingSubAgent.status = 'inactive';
+                        await existingSubAgent.save({ transaction: t });
                     }
-
                     if (existingAgent) {
-                        existingAgent.status = "inactive"
-                        await existingAgent.save();
-
-                        // await Agent.destroy({
-                        //     where: { email }
-                        // });
+                        existingAgent.status = 'inactive';
+                        await existingAgent.save({ transaction: t });
                     }
-
                     if (existingSales) {
-                        existingSales.status = "active"
-                        await existingSales.save();
+                        existingSales.status = 'active';
+                        await existingSales.save({ transaction: t });
                     } else {
-                        await Salesman.create({ name, image, address, phone, email, updateBy: req.user.username });
+                        await Salesman.create({ name, image, address, phone, email, updateBy: req.user.username }, { transaction: t });
                         logger.info(`Salesman created`);
                     }
-
                     break;
 
                 case 2:
                     if (existingSales) {
-                        existingSales.status = "inactive"
-                        await existingSales.save();
-                        // await Salesman.destroy({
-                        //     where: { email }
-                        // });
+                        existingSales.status = 'inactive';
+                        await existingSales.save({ transaction: t });
                     }
-
                     if (existingAgent) {
-                        existingAgent.status = "inactive"
-                        await existingAgent.save();
-                        // await Agent.destroy({
-                        //     where: { email }
-                        // });
+                        existingAgent.status = 'inactive';
+                        await existingAgent.save({ transaction: t });
                     }
-
                     if (existingSubAgent) {
-                        existingSubAgent.status = "active"
-                        await existingSubAgent.save();
+                        existingSubAgent.status = 'active';
+                        await existingSubAgent.save({ transaction: t });
                     } else {
-                        await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username });
+                        await SubAgent.create({ name, image, address, phone, email, updateBy: req.user.username }, { transaction: t });
                         logger.info(`SubAgent created`);
                     }
-
                     break;
-
 
                 case 3:
                     if (existingSales) {
-                        existingSales.status = "inactive"
-                        await existingSales.save();
-                        // await Salesman.destroy({
-                        //     where: { email }
-                        // });
+                        existingSales.status = 'inactive';
+                        await existingSales.save({ transaction: t });
                     }
-
                     if (existingSubAgent) {
-                        existingSubAgent.status = "inactive"
-                        await existingSubAgent.save();
-                        // await SubAgent.destroy({
-                        //     where: { email }
-                        // });
+                        existingSubAgent.status = 'inactive';
+                        await existingSubAgent.save({ transaction: t });
                     }
-
                     if (existingAgent) {
-                        existingAgent.status = "active"
-                        await existingAgent.save();
-                        // await Agent.destroy({
-                        //     where: { email }
-                        // });                        
+                        existingAgent.status = 'active';
+                        await existingAgent.save({ transaction: t });
                     } else {
-                        await Agent.create({ name, image, address, phone, email, updateBy: req.user.username });
+                        await Agent.create({ name, image, address, phone, email, updateBy: req.user.username }, { transaction: t });
                         logger.info(`Agent created`);
                     }
-
                     break;
 
                 default:
@@ -167,11 +123,45 @@ exports.updateUser = async (req, res) => {
             }
         }
 
-        await existingUser.save();
-        logger.info(`User updated: ${id}`);
+        if (status !== null && status !== undefined && status === 'inactive') {
+            if (existingSubAgent) {
+                const shop = await Shop.findOne({ where: { subAgentId: existingSubAgent.id }, transaction: t });
+                if (shop) {
+                    shop.subAgentId = null;
+                    await shop.save({ transaction: t });
+                }
+                existingSubAgent.status = status;
+                await existingSubAgent.save({ transaction: t });
 
+            }
+            if (existingAgent) {
+                const shop = await Shop.findOne({ where: { agentId: existingAgent.id }, transaction: t });
+                if (shop) {
+                    shop.agentId = null;
+                    await shop.save({ transaction: t });
+                }
+                existingAgent.status = status;
+                await existingAgent.save({ transaction: t });
+            }
+            if (existingSales) {
+                const shop = await Shop.findOne({ where: { salesId: existingSales.id }, transaction: t });
+                if (shop) {
+                    shop.salesId = null;
+                    await shop.save({ transaction: t });
+                }
+                existingSales.status = status;
+                await existingSales.save({ transaction: t });
+            }
+        }
+
+        await existingUser.save({ transaction: t });
+        await t.commit();
+
+        logger.info(`User updated: ${id}`);
         res.json(existingUser);
+
     } catch (error) {
+        await t.rollback();
         logger.error(error);
         res.status(400).json({ error: 'Bad Request' });
     }
