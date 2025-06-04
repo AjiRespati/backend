@@ -125,18 +125,17 @@ exports.updateUser = async (req, res) => {
 
         if (status !== null && status !== undefined && status === 'inactive') {
             if (existingSubAgent) {
-                const shop = await Shop.findOne({ where: { subAgentId: existingSubAgent.id }, transaction: t });
-                if (shop) {
+                const shops = await Shop.findAll({ where: { subAgentId: existingSubAgent.id }, transaction: t });
+                for (const shop of shops) {
                     shop.subAgentId = null;
                     await shop.save({ transaction: t });
                 }
                 existingSubAgent.status = status;
                 await existingSubAgent.save({ transaction: t });
-
             }
             if (existingAgent) {
-                const shop = await Shop.findOne({ where: { agentId: existingAgent.id }, transaction: t });
-                if (shop) {
+                const shops = await Shop.findAll({ where: { agentId: existingAgent.id }, transaction: t });
+                for (const shop of shops) {
                     shop.agentId = null;
                     await shop.save({ transaction: t });
                 }
@@ -144,8 +143,8 @@ exports.updateUser = async (req, res) => {
                 await existingAgent.save({ transaction: t });
             }
             if (existingSales) {
-                const shop = await Shop.findOne({ where: { salesId: existingSales.id }, transaction: t });
-                if (shop) {
+                const shops = await Shop.findAll({ where: { salesId: existingSales.id }, transaction: t });
+                for (const shop of shops) {
                     shop.salesId = null;
                     await shop.save({ transaction: t });
                 }
