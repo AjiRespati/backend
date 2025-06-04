@@ -141,7 +141,9 @@ exports.getAllShopsBySales = async (req, res) => {
 exports.updateShop = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, image, address, coordinates, phone, email, status, updateBy } = req.body;
+        const { name, image, address, coordinates, phone, email, status,
+            salesId, subAgentId, agentId
+        } = req.body;
 
         const shop = await Shop.findByPk(id);
         if (!shop) return res.status(404).json({ error: "Shop not found" });
@@ -156,6 +158,16 @@ exports.updateShop = async (req, res) => {
         shop.email = email || shop.email;
         shop.status = status || shop.status;
         shop.updateBy = req.user.username;
+
+        if (salesId) {
+            shop.salesId = salesId;
+        }
+        if (subAgentId) {
+            shop.subAgentId = subAgentId;
+        }
+        if (agentId) {
+            shop.agentId = agentId;
+        }
 
         await shop.save();
 

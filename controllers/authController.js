@@ -50,6 +50,7 @@ exports.login = async (req, res) => {
         // Store refresh token in DB
         user.refreshToken = refreshToken;
         await user.save();
+        logger.info("✅ User " + username + " login successfully.");
 
         let salesId = null;
         let subAgentId = null;
