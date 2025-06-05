@@ -1,3 +1,17 @@
+1. tampilan laptop
+2. export ke excel
+3. upload foto toko
+4. upload foto freezer
+5. pembelian dengan harga modal
+6. bisa edit ambil alih toko ke sales lain
+7. fitur edit data toko
+8. tidak wajib email untuk toko
+
+- Point 6 DONE
+- Point 8 DONE
+
+
+
 Salesman Menu:
 1. Kondisi stock
 2. Pesan Barang

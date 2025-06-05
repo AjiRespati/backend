@@ -11,16 +11,37 @@ exports.createShop = async (req, res) => {
 
         // 1. Create Shop User 
         const existingUser = await User.findOne({ where: { username: email } });
-        if (existingUser) return res.status(400).json({ message: 'Shop Email/Username already exists' });
+
+        let emailToSave = email;
+
+        if (existingUser  && (!emailToSave.includes("@mail.com"))) {
+            return res.status(400).json({ message: 'Shop Email/Username already exists' });
+        }
+
+        if (existingUser && (emailToSave.includes("@mail.com"))) {
+            emailToSave = emailToSave.replace("@mail.com", "@gracia.com");
+        }
+        const secondStepExistingUser = await User.findOne({ where: { username: emailToSave } });
+        if (secondStepExistingUser) {
+            emailToSave = emailToSave.replace("@gracia.com", "@gracia.id")
+        }
+        const thirdStepExistingUser = await User.findOne({ where: { username: emailToSave } });
+        if (thirdStepExistingUser) {
+            emailToSave = emailToSave.replace("@gracia.id", "@gracia.co.id")
+        }
+        const fourthStepExistingUser = await User.findOne({ where: { username: emailToSave } });
+        if (fourthStepExistingUser) {
+            return res.status(400).json({ message: 'Shop Email/Username already exists' });
+        }
 
         const password = "gracia123";
         const hashedPassword = await bcrypt.hash(password, 10);
 
         await User.create({
-            username: email,
+            username: emailToSave,
             password: hashedPassword,
             name,
-            email,
+            email: emailToSave,
             phone,
             address,
             level: 6,
@@ -33,7 +54,7 @@ exports.createShop = async (req, res) => {
         // 2. Create Shop
         logger.info(`Shop : ${JSON.stringify(req.body)}`);
         const shop = await Shop.create({
-            name, image, address, coordinates, phone, email,
+            name, image, address, coordinates, phone, email: emailToSave,
             salesId, subAgentId, agentId, createBy: req.user.username
         });
 
