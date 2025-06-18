@@ -1,3 +1,22 @@
+
+*Email tidak wajib untuk Toko.*
+Email akan dibuatkan otomatis dengan format *namatoko@mail.com*
+
+kalau terjadi nama toko sama
+Urutan generate email otomatis untuk login toko adalah sbb:
+
+namatoko@mail.com
+namatoko@gracia.com
+namatoko@gracia.id
+namatoko@gracia.co.id
+
+email ini bisa dilihat lewat menu Management Toko
+bila ada lebih dari empat toko dengan nama yang sama nanti akan dihandle lebih lanjut
+
+*Edit data toko*
+Bisa dilakukan dari akun Sales dan dari Admin
+
+
 1. tampilan laptop
 2. export ke excel
 3. upload foto toko
@@ -8,6 +27,7 @@
 8. tidak wajib email untuk toko
 
 - Point 6 DONE
+- Point 7 DONE
 - Point 8 DONE
 
 
