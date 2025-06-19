@@ -34,6 +34,8 @@ exports.updateRefrigerator = async (req, res) => {
         const { name, capacity, serialNumber, coordinates, shopId, status, retrieveDate, retrieveBy,
             repairedDate, repairedBy, description } = req.body;
 
+        const image = req.imagePath;
+
         const refrigerator = await Refrigerator.findByPk(id);
         if (!refrigerator) return res.status(404).json({ error: "Refrigerator not found" });
 
@@ -48,6 +50,7 @@ exports.updateRefrigerator = async (req, res) => {
         refrigerator.repairedDate = repairedDate || refrigerator.repairedDate;
         refrigerator.repairedBy = repairedBy || refrigerator.repairedBy;
         refrigerator.description = description || refrigerator.description;
+        refrigerator.image = image || refrigerator.image;
 
         await refrigerator.save();
 

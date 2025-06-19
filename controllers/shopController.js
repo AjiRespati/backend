@@ -14,7 +14,7 @@ exports.createShop = async (req, res) => {
 
         let emailToSave = email;
 
-        if (existingUser  && (!emailToSave.includes("@mail.com"))) {
+        if (existingUser && (!emailToSave.includes("@mail.com"))) {
             return res.status(400).json({ message: 'Shop Email/Username already exists' });
         }
 
@@ -72,7 +72,7 @@ exports.getAllShops = async (req, res) => {
     try {
         // --- Define the attributes you want from the Refrigerator model ---
         // --- Replace these with the actual attribute names you need ---
-        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description'];
+        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description', 'image'];
 
         const shops = await Shop.findAll({
             include: [
@@ -120,7 +120,7 @@ exports.getAllShopsBySales = async (req, res) => {
     const { id } = req.params;
     try {
         let shops = [];
-        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description'];
+        const desiredRefrigeratorAttributes = ['id', 'serialNumber', 'name', 'status', 'description', 'image'];
         const salesmanShops = await Shop.findAll({
             where: { salesId: id },
             include: [{
@@ -134,6 +134,7 @@ exports.getAllShopsBySales = async (req, res) => {
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association
+                attributes: desiredRefrigeratorAttributes,
             }],
         });
         const agentShops = await Shop.findAll({
@@ -141,6 +142,7 @@ exports.getAllShopsBySales = async (req, res) => {
             include: [{
                 model: Refrigerator,
                 //   as: 'Refrigerators', // Optional: Provide an alias for the association
+                attributes: desiredRefrigeratorAttributes,
             }],
         });
 
@@ -162,9 +164,11 @@ exports.getAllShopsBySales = async (req, res) => {
 exports.updateShop = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, image, address, coordinates, phone, email, status,
+        const { name, address, coordinates, phone, email, status,
             salesId, subAgentId, agentId
         } = req.body;
+
+        const image = req.imagePath;
 
         const shop = await Shop.findByPk(id);
         if (!shop) return res.status(404).json({ error: "Shop not found" });
