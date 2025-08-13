@@ -227,7 +227,8 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
     let totalSubAgentShare = 0;
     let totalAgentShare = 0;
     let totalShopShare = 0;
-    
+    const allShare = shopPrice - totalPrice;
+
     // Calculate shop share if it's a stock_out and there's a relevant seller OR if it always applies
     if (stockEvent === 'stock_out' && (salesId || subAgentId || agentId)) { // Example condition
         totalShopShare = totalNetPrice - shopPrice;
@@ -236,23 +237,45 @@ async function _internalSettleSingleStock(stockInstance, transaction, username) 
     }
 
     if (salesId) {
-        distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["salesman"] || 0);
-        // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
-        totalSalesShare = shopPrice * (percentageMap["salesman"] || 0) / 100;
-        // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
-        totalDistributorShare = totalNetPrice - totalPrice - totalSalesShare - totalShopShare;
+        // distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["salesman"] || 0);
+        // // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["salesman"] || 0);
+        // totalSalesShare = shopPrice * (percentageMap["salesman"] || 0) / 100;
+        // // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        // totalDistributorShare = totalNetPrice - totalPrice - totalSalesShare - totalShopShare;
+
+        // PERHITUNGAN BARU WALLS, TANPA PERSENTASE DISTRIBUTOR DAN PERSENTASE TOKO //
+        // 1. Keuntungan total adalah selisih harga beli toko dan harga beli distributor
+        //    Bila dihitung persentase, rumusnya keuntungan dibagi harga beli distributor
+        // 2. Kuntungan salesman adalah 3%. Jadi rumusnya adalah 3% * harga beli distributor
+        // 3. Keuntungan distributor adalah keuntungan total dikurangi keuntungan salesman.
+        // 4. dan selanjutnya untuk subAgent dan agent
+
+        //KEUNTUNGAN SALES (WALLS):
+
+        totalSalesShare = totalPrice * (percentageMap["salesman"] || 0) / 100;
+        totalDistributorShare = allShare - totalSalesShare;
+
     } else if (subAgentId) {
-        distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["subAgent"] || 0);
-        // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
-        totalSubAgentShare = shopPrice * (percentageMap["subAgent"] || 0) / 100;
-        // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
-        totalDistributorShare = totalNetPrice - totalPrice - totalSubAgentShare - totalShopShare;
+        // distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["subAgent"] || 0);
+        // // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["shop"] || 0) - (percentageMap["subAgent"] || 0);
+        // totalSubAgentShare = shopPrice * (percentageMap["subAgent"] || 0) / 100;
+        // // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        // totalDistributorShare = totalNetPrice - totalPrice - totalSubAgentShare - totalShopShare;
+
+        totalSubAgentShare = totalPrice * (percentageMap["subAgent"] || 0) / 100;
+        totalDistributorShare = allShare - totalSubAgentShare;
+
     } else if (agentId) {
-        distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["agent"] || 0);
-        // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
-        totalAgentShare = shopPrice * (percentageMap["agent"] || 0) / 100;
-        // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
-        totalDistributorShare = totalNetPrice - totalPrice - totalAgentShare - totalShopShare;
+        // distributorPercentage = (percentageMap["distributor"] || 0) - (percentageMap["agent"] || 0);
+        // // distributorPercentage = 100 - (percentageMap["supplier"] || 0) - (percentageMap["agent"] || 0); // Agent might not involve shop %? Check logic.
+        // totalAgentShare = shopPrice * (percentageMap["agent"] || 0) / 100;
+        // // totalDistributorShare = totalNetPrice * distributorPercentage / 100;
+        // totalDistributorShare = totalNetPrice - totalPrice - totalAgentShare - totalShopShare;
+
+        totalAgentShare = totalPrice * (percentageMap["agent"] || 0) / 100;
+        totalDistributorShare = allShare - totalAgentShare;
+
+
     } // else: No specific seller type, distributor share remains 0 unless other logic applies
 
     // --- End Commission Calculation ---
@@ -795,7 +818,7 @@ exports.stockListByAgent = async (req, res) => {
 
 exports.getStockHistory = async (req, res) => {
     const { metricId, fromDate, toDate, status } = req.query;
-console.log("BENER KESONI KAN...????")
+    console.log("BENER KESONI KAN...????")
     try {
         const query = `
             SELECT 
