@@ -7,17 +7,17 @@ const path = require("path");
 exports.createProduct = async (req, res) => {
     const { name, description, price, shopPrice, netPrice, metricType } = req.body;
     /**
-        Harga jual pabrik
+        Harga jual pabrik / harge beli distributor
     */
     let doublePrice
 
     /**
-        Harga jual distributor 
+        Harga jual distributor / harga beli toko
     */
     let doubleShopPrice
 
     /**
-        Harga jual toko 
+        Harga jual toko / harga beli konsumen
     */
     let doubleNetPrice
 
@@ -288,7 +288,6 @@ exports.updateProduct = async (req, res) => {
         res.status(500).json({ error: "Updating product failed" });
     }
 };
-
 
 exports.deleteProduct = async (req, res) => {
     try {
