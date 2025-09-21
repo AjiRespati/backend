@@ -8,9 +8,6 @@ const { sequelize } = require("./models");
 
 const app = express();
 
-//TODO: Versioning
-const version = "1.1.3";
-
 // ✅ Middlewares
 app.use(cors());
 app.use(helmet());
@@ -37,6 +34,9 @@ const salesmanCommissionRoutes = require("./routes/salesmanCommissionRoutes");
 const distributorCommissionRoutes = require("./routes/distributorCommissionRoutes");
 const shopCommissionRoutes = require("./routes/shopCommissionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+
+//TODO: Versioning
+const version = "1.1.4";
 
 const base = "/service";
 
